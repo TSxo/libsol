@@ -1,66 +1,53 @@
-## Foundry
+# libsol
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
+A suite of opinionated, optimized smart contract modules.
 
-Foundry consists of:
+## Contracts
 
--   **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
--   **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
--   **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
--   **Chisel**: Fast, utilitarian, and verbose solidity REPL.
+The smart contracts are located in the `src` directory.
 
-## Documentation
-
-https://book.getfoundry.sh/
-
-## Usage
-
-### Build
-
-```shell
-$ forge build
+```ml
+auth
+├── IOwned.sol
+├── Owned.sol
+└── managed
+    ├── AuthManaged.sol
+    ├── AuthManager.sol
+    ├── IAuthManaged.sol
+    ├── IAuthManager.sol
+    └── IAuthority.sol
 ```
 
-### Test
+## Work in Progress
 
-```shell
-$ forge test
-```
+This project is currently under active development. New modules and features will
+be added to enhance functionality and performance. While the core auth modules are
+available for testing and experimentation, the complete suite will be published
+once enough modules are integrated and thoroughly vetted.
 
-### Format
+Contributions and suggestions are welcomed.
 
-```shell
-$ forge fmt
-```
+## Disclaimer
 
-### Gas Snapshots
+This suite of contracts prioritize an opinionated balance of optimization and
+readability. **They were not designed with user safety in mind** and contain
+minimal safety checks. It is experimental software and is provided **as-is**,
+without any warranties or guarantees of functionality, security, or fitness
+for any particular purpose.
 
-```shell
-$ forge snapshot
-```
+There are implicit invariants these contracts expect to hold. Users and
+developers integrating this contract **do so at their own risk** and are
+responsible for thoroughly reviewing the code before use.
 
-### Anvil
+The author assumes **no liability** for any loss, damage, or unintended
+behavior resulting from the use, deployment, or interaction with this contract.
 
-```shell
-$ anvil
-```
+## Acknowledgements
 
-### Deploy
+Heavy inspiration is taken from:
 
-```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
-```
+- [Solmate](https://github.com/transmissions11/solmate)
+- [OpenZeppelin](https://github.com/OpenZeppelin/openzeppelin-contracts)
+- [Solady](https://github.com/Vectorized/solady)
 
-### Cast
-
-```shell
-$ cast <subcommand>
-```
-
-### Help
-
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
-```
+Thank you.
