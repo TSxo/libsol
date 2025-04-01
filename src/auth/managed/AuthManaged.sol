@@ -74,11 +74,14 @@ abstract contract AuthManaged is IAuthManaged {
     // -------------------------------------------------------------------------
     // State
 
-    /// keccak256(abi.encode(uint256(keccak256("libsol.storage.AuthManaged")) - 1)) & ~bytes32(uint256(0xff));
+    /// @dev keccak256(abi.encode(uint256(keccak256("libsol.storage.AuthManaged")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant STORAGE = 0xba07b3ca0f769fbcf052f5eef32e58c07f3aeeec01c8167517b7043932526600;
 
-    /// @dev `keccak256(bytes("AuthorityUpdated(address,address)"))`.
+    /// @dev keccak256(bytes("AuthorityUpdated(address,address)"))
     bytes32 private constant AUTHORITY_UPDATED = 0xa3396fd7f6e0a21b50e5089d2da70d5ac0a3bbbd1f617a93f134b76389980198;
+
+    /// @dev bytes4(keccak256(abi.encodePacked("canCall(address,address,bytes4))))
+    bytes32 private constant CAN_CALL = 0xb700961300000000000000000000000000000000000000000000000000000000;
 
     // -------------------------------------------------------------------------
     // Modifiers
@@ -162,7 +165,7 @@ abstract contract AuthManaged is IAuthManaged {
             let ptr := mload(0x40)
             let manager := sload(STORAGE)
 
-            mstore(ptr, shl(224, 0xb7009613)) // `canCall(address,address,bytes4)`
+            mstore(ptr, CAN_CALL)
             mstore(add(ptr, 0x04), user)
             mstore(add(ptr, 0x24), address())
             mstore(add(ptr, 0x44), selector)

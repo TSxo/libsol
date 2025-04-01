@@ -60,10 +60,10 @@ abstract contract Owned is IOwned {
     // -------------------------------------------------------------------------
     // State
 
-    /// keccak256(abi.encode(uint256(keccak256("libsol.storage.Owned")) - 1)) & ~bytes32(uint256(0xff));
+    /// @dev keccak256(abi.encode(uint256(keccak256("libsol.storage.Owned")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant STORAGE = 0x004a2de2e3667a1e83d879c80633387ece8ffaa2a60d61bc81eb25bb9337ba00;
 
-    /// @dev `keccak256(bytes("OwnershipTransferred(address,address)"))`.
+    /// @dev keccak256(bytes("OwnershipTransferred(address,address)"))
     bytes32 private constant OWNERSHIP_TRANSFERRED = 0x8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e0;
 
     // -------------------------------------------------------------------------

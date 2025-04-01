@@ -101,28 +101,28 @@ contract AuthManager is IAuthority, IAuthManager {
     // -------------------------------------------------------------------------
     // State
 
-    /// keccak256(abi.encode(uint256(keccak256("libsol.storage.AuthManager")) - 1)) & ~bytes32(uint256(0xff));
+    /// @dev keccak256(abi.encode(uint256(keccak256("libsol.storage.AuthManager")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant STORAGE = 0x938700b07e50a0d76711cd0ee77205e6b6a2709fd62fa43819e05a1a4baac400;
 
-    /// @dev `keccak256(bytes("UserRoleUpdated(address,uint8,bool)"))`.
+    /// @dev keccak256(bytes("UserRoleUpdated(address,uint8,bool)"))
     bytes32 private constant USER_ROLE_UPDATED = 0x4c9bdd0c8e073eb5eda2250b18d8e5121ff27b62064fbeeeed4869bb99bc5bf2;
 
-    /// @dev `keccak256(bytes("AccessUpdated(address,bytes4,uint8,bool)"))`.
+    /// @dev keccak256(bytes("AccessUpdated(address,bytes4,uint8,bool)"))
     bytes32 private constant ACCESS_UPDATED = 0xdb20781f7ac6b1c66139899bc76388269b478dbb402af50576a4c997b473d564;
 
-    /// @dev `keccak256(bytes("Paused(address,bool)"))`.
+    /// @dev keccak256(bytes("Paused(address,bool)"))
     bytes32 private constant PAUSED = 0xe8699cf681560fd07de85543bd994263f4557bdc5179dd702f256d15fd083e1d;
 
-    /// @dev `keccak256(bytes("AuthorityUpdated(address,address)"))`.
+    /// @dev keccak256(bytes("AuthorityUpdated(address,address)"))
     bytes32 private constant AUTHORITY_UPDATED = 0xa3396fd7f6e0a21b50e5089d2da70d5ac0a3bbbd1f617a93f134b76389980198;
 
-    /// @dev uint256(1) << 255.
+    /// @dev uint256(1) << 255
     bytes32 private constant CLOSED_MASK = 0x8000000000000000000000000000000000000000000000000000000000000000;
 
-    /// @dev uint256(1) << 254.
+    /// @dev uint256(1) << 254
     bytes32 private constant PUBLIC_MASK = 0x4000000000000000000000000000000000000000000000000000000000000000;
 
-    /// @dev (uint256(1) << 254) - 1.
+    /// @dev (uint256(1) << 254) - 1
     bytes32 private constant ROLES_MASK = 0x3fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
 
     /// @dev Bit position indicating whether a function is closed.
