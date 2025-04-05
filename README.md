@@ -7,23 +7,24 @@ A suite of opinionated, optimized smart contract modules.
 The smart contracts are located in the `src` directory.
 
 ```ml
-auth
-├── IOwned.sol
-├── Owned.sol
-└── managed
-    ├── AuthManaged.sol
-    ├── AuthManager.sol
-    ├── IAuthManaged.sol
-    ├── IAuthManager.sol
-    └── IAuthority.sol
+.
+├── auth
+│   ├── IOwned.sol
+│   ├── Owned.sol
+│   └── managed
+│       ├── AuthManaged.sol
+│       ├── AuthManager.sol
+│       ├── IAuthManaged.sol
+│       ├── IAuthManager.sol
+│       └── IAuthority.sol
+├── mixins
+│   └── Mutex.sol
 ```
 
 ## Work in Progress
 
-This project is currently under active development. New modules and features will
-be added to enhance functionality and performance. While the core auth modules are
-available for testing and experimentation, the complete suite will be published
-once enough modules are integrated and thoroughly vetted.
+This project is currently under development. New modules and features will
+be added to enhance functionality and performance.
 
 Contributions and suggestions are welcomed.
 
