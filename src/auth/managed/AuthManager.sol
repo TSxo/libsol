@@ -10,9 +10,6 @@ import { IAuthority } from "./IAuthority.sol";
 ///
 /// @author TSxo
 ///
-/// @notice A role-based access control system for managing permissions on smart
-/// contracts.
-///
 /// @dev This contract provides an efficient and flexible solution for managing
 /// the permissions of a system.
 ///
