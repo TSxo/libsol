@@ -35,25 +35,10 @@ pragma solidity ^0.8.20;
 /// against reinitialization, leaving such protection mechanisms up to the
 /// inheriting contract.
 ///
-/// # Disclaimer
-///
-/// This contract prioritizes an opinionated balance between optimization and
-/// readability. **It was not designed with user safety in mind** and contains
-/// minimal safety checks. It is experimental software and is provided **as-is**,
-/// without any warranties or guarantees of functionality, security, or fitness
-/// for any particular purpose.
-///
-/// There are implicit invariants this contract expects to hold. Users and
-/// developers integrating this contract **do so at their own risk** and are
-/// responsible for thoroughly reviewing the code before use.
-///
-/// The author assumes **no liability** for any loss, damage, or unintended
-/// behavior resulting from the use, deployment, or interaction with this contract.
-///
 /// # Acknowledgements
 ///
 /// Heavy inspiration is taken from:
-/// - Open Zeppelin;
+/// - OpenZeppelin;
 /// - Solmate; and
 /// - Solady.
 ///
@@ -71,7 +56,7 @@ abstract contract Mutex {
     // State
 
     /// @dev keccak256(abi.encode(uint256(keccak256("libsol.storage.Mutex")) - 1)) & ~bytes32(uint256(0xff))
-    bytes32 private constant STORAGE = 0x4772547a0c85096864cfb8fb79e76bca1fc87ca09848b27c5507e4697fcfd100;
+    bytes32 private constant MUTEX_SLOT = 0x4772547a0c85096864cfb8fb79e76bca1fc87ca09848b27c5507e4697fcfd100;
 
     /// @dev Represents the unlocked state.
     uint256 private constant UNLOCKED = 1;
@@ -112,7 +97,7 @@ abstract contract Mutex {
     /// @notice Initializes the contract by setting the locked status to `UNLOCKED`.
     function _initializeMutex() internal virtual {
         assembly ("memory-safe") {
-            sstore(STORAGE, UNLOCKED)
+            sstore(MUTEX_SLOT, UNLOCKED)
         }
     }
 
@@ -125,14 +110,14 @@ abstract contract Mutex {
         _assertUnlocked();
 
         assembly ("memory-safe") {
-            sstore(STORAGE, LOCKED)
+            sstore(MUTEX_SLOT, LOCKED)
         }
     }
 
     /// @notice Releases the lock.
     function _releaseLock() internal virtual {
         assembly ("memory-safe") {
-            sstore(STORAGE, UNLOCKED)
+            sstore(MUTEX_SLOT, UNLOCKED)
         }
     }
 
@@ -141,14 +126,14 @@ abstract contract Mutex {
     /// @return result True if the lock is acquired, false otherwise.
     function _isLocked() internal view virtual returns (bool result) {
         assembly ("memory-safe") {
-            result := eq(sload(STORAGE), LOCKED)
+            result := eq(sload(MUTEX_SLOT), LOCKED)
         }
     }
 
     /// @notice Asserts that the lock has not been acquired.
     function _assertUnlocked() internal view virtual {
         assembly ("memory-safe") {
-            if eq(sload(STORAGE), LOCKED) {
+            if eq(sload(MUTEX_SLOT), LOCKED) {
                 mstore(0x00, 0x02c73c37) // `Mutex__Locked()`
                 revert(0x1c, 0x04)
             }
