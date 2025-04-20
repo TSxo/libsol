@@ -5,8 +5,8 @@ import { Test } from "forge-std/Test.sol";
 import { IAuthManaged } from "@tsxo/libsol/auth/managed/IAuthManaged.sol";
 import { IAuthManager } from "@tsxo/libsol/auth/managed/IAuthManager.sol";
 
-import { AuthManagedImpl } from "@tsxo/libsol/mocks/auth/managed/AuthManagedImpl.sol";
-import { AuthManagerImpl } from "@tsxo/libsol/mocks/auth/managed/AuthManagerImpl.sol";
+import { AuthManagedMock } from "@tsxo/libsol/mocks/auth/managed/AuthManagedMock.sol";
+import { AuthManagerMock } from "@tsxo/libsol/mocks/auth/managed/AuthManagerMock.sol";
 
 interface TestEvents {
     event AuthorityUpdated(address indexed previousAuthority, address indexed newAuthority);
@@ -23,15 +23,15 @@ contract AuthManagedTest is Test, TestEvents {
     address constant owner = address(0x1234);
     address constant user = address(0x2345);
 
-    AuthManagerImpl manager;
-    AuthManagedImpl managed;
+    AuthManagerMock manager;
+    AuthManagedMock managed;
 
     // -------------------------------------------------------------------------
     // Set Up
 
     function setUp() public {
-        manager = new AuthManagerImpl(owner);
-        managed = new AuthManagedImpl(address(manager));
+        manager = new AuthManagerMock(owner);
+        managed = new AuthManagedMock(address(manager));
     }
 
     // -------------------------------------------------------------------------

@@ -4,7 +4,7 @@ pragma solidity ^0.8.20;
 
 import { Mutex } from "@tsxo/libsol/mixins/Mutex.sol";
 
-contract MutexImpl is Mutex {
+contract MutexMock is Mutex {
     uint256 private _count;
 
     constructor() {

@@ -4,7 +4,7 @@ pragma solidity 0.8.20;
 
 import { AuthManaged } from "@tsxo/libsol/auth/managed/AuthManaged.sol";
 
-contract AuthManagedImpl is AuthManaged {
+contract AuthManagedMock is AuthManaged {
     uint256 public count;
 
     constructor(address initialAuthority) {
