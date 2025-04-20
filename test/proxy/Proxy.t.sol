@@ -2,7 +2,7 @@ pragma solidity 0.8.20;
 
 import { Test } from "forge-std/Test.sol";
 import { ProxiableCounter } from "@tsxo/libsol/mocks/proxy/ProxiableCounter.sol";
-import { ProxyImpl } from "@tsxo/libsol/mocks/proxy/ProxyImpl.sol";
+import { ProxyMock } from "@tsxo/libsol/mocks/proxy/ProxyMock.sol";
 
 interface TestEvents {
     event Received(uint256 val);
@@ -14,14 +14,14 @@ contract ProxyTest is Test, TestEvents {
     // State
 
     ProxiableCounter counter;
-    ProxyImpl impl;
+    ProxyMock proxy;
 
     // -------------------------------------------------------------------------
     // Set Up
 
     function setUp() public {
         counter = new ProxiableCounter();
-        impl = new ProxyImpl(address(counter));
+        proxy = new ProxyMock(address(counter));
     }
 
     // -------------------------------------------------------------------------
@@ -35,22 +35,22 @@ contract ProxyTest is Test, TestEvents {
         bytes memory notExist = abi.encodeWithSignature("notExist()");
 
         // Initial state.
-        (bool success, bytes memory data) = address(impl).staticcall(countCall);
+        (bool success, bytes memory data) = address(proxy).staticcall(countCall);
         uint256 count = abi.decode(data, (uint256));
 
         assert(success);
         assertEq(count, 0);
 
         // Increment.
-        vm.expectEmit(false, false, false, true, address(impl));
+        vm.expectEmit(false, false, false, true, address(proxy));
         emit Count(1);
 
-        (success, data) = address(impl).call(incCall);
+        (success, data) = address(proxy).call(incCall);
 
         assert(success);
         assertEq(data.length, 0);
 
-        (success, data) = address(impl).staticcall(countCall);
+        (success, data) = address(proxy).staticcall(countCall);
         count = abi.decode(data, (uint256));
 
         assert(success);
@@ -58,14 +58,14 @@ contract ProxyTest is Test, TestEvents {
         assertEq(counter.count(), 0);
 
         // Decrement.
-        vm.expectEmit(false, false, false, true, address(impl));
+        vm.expectEmit(false, false, false, true, address(proxy));
         emit Count(0);
-        (success, data) = address(impl).call(decCall);
+        (success, data) = address(proxy).call(decCall);
 
         assert(success);
         assertEq(data.length, 0);
 
-        (success, data) = address(impl).staticcall(countCall);
+        (success, data) = address(proxy).staticcall(countCall);
         count = abi.decode(data, (uint256));
 
         assert(success);
@@ -73,22 +73,27 @@ contract ProxyTest is Test, TestEvents {
         assertEq(counter.count(), 0);
 
         // Set Count.
-        vm.expectEmit(false, false, false, true, address(impl));
+        vm.expectEmit(false, false, false, true, address(proxy));
         emit Count(10);
-        (success, data) = address(impl).call(setCall);
+        (success, data) = address(proxy).call(setCall);
 
         assert(success);
         assertEq(data.length, 0);
 
-        (success, data) = address(impl).staticcall(countCall);
+        (success, data) = address(proxy).staticcall(countCall);
         count = abi.decode(data, (uint256));
 
         assert(success);
         assertEq(count, 10);
         assertEq(counter.count(), 0);
 
+        // Set Count wrapped.
+        ProxiableCounter asCounter = ProxiableCounter(payable(address(proxy)));
+        asCounter.setCount(20);
+        assertEq(asCounter.count(), 20);
+
         // Non-existant function.
-        (success, data) = address(impl).call(notExist);
+        (success, data) = address(proxy).call(notExist);
         assert(!success);
     }
 
@@ -100,27 +105,27 @@ contract ProxyTest is Test, TestEvents {
         vm.deal(user, 2 ether);
 
         // Initial state.
-        assertEq(address(impl).balance, 0);
+        assertEq(address(proxy).balance, 0);
         assertEq(address(counter).balance, 0);
 
         // Send to receive.
-        vm.expectEmit(false, false, false, true, address(impl));
+        vm.expectEmit(false, false, false, true, address(proxy));
         emit Received(1 ether);
 
-        (bool success,) = address(impl).call{ value: 1 ether }("");
+        (bool success,) = address(proxy).call{ value: 1 ether }("");
         assert(success);
 
-        assertEq(address(impl).balance, 1 ether);
+        assertEq(address(proxy).balance, 1 ether);
         assertEq(address(counter).balance, 0);
 
         // Send to payable function.
-        vm.expectEmit(false, false, false, true, address(impl));
+        vm.expectEmit(false, false, false, true, address(proxy));
         emit Received(1 ether);
 
-        (success,) = address(impl).call{ value: 1 ether }(fundCall);
+        (success,) = address(proxy).call{ value: 1 ether }(fundCall);
         assert(success);
 
-        assertEq(address(impl).balance, 2 ether);
+        assertEq(address(proxy).balance, 2 ether);
         assertEq(address(counter).balance, 0);
 
         vm.stopPrank();

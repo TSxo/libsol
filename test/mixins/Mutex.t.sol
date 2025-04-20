@@ -2,20 +2,20 @@ pragma solidity 0.8.20;
 
 import { Test } from "forge-std/Test.sol";
 import { Mutex } from "@tsxo/libsol/mixins/Mutex.sol";
-import { MutexImpl, MutexAttack } from "@tsxo/libsol/mocks/mixins/MutexImpl.sol";
+import { MutexMock, MutexAttack } from "@tsxo/libsol/mocks/mixins/MutexMock.sol";
 
 contract MutextTest is Test {
     // -------------------------------------------------------------------------
     // State
 
-    MutexImpl mutex;
+    MutexMock mutex;
     MutexAttack attacker;
 
     // -------------------------------------------------------------------------
     // Set Up
 
     function setUp() public {
-        mutex = new MutexImpl();
+        mutex = new MutexMock();
         attacker = new MutexAttack();
     }
 

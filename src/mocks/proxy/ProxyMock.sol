@@ -4,7 +4,7 @@ pragma solidity ^0.8.20;
 
 import { Proxy } from "@tsxo/libsol/proxy/Proxy.sol";
 
-contract ProxyImpl is Proxy {
+contract ProxyMock is Proxy {
     address immutable _target;
 
     constructor(address target) {

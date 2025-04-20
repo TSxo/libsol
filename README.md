@@ -18,7 +18,10 @@ The smart contracts are located in the `src` directory.
 │       ├── IAuthManager.sol
 │       └── IAuthority.sol
 ├── mixins
+│   ├── CallContext.sol
 │   └── Mutex.sol
+└── proxy
+    ├── Proxy.sol
 ```
 
 ## Purpose & License

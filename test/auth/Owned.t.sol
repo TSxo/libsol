@@ -2,7 +2,7 @@ pragma solidity 0.8.20;
 
 import { Test } from "forge-std/Test.sol";
 import { IOwned } from "@tsxo/libsol/auth/IOwned.sol";
-import { OwnedImpl } from "@tsxo/libsol/mocks/auth/OwnedImpl.sol";
+import { OwnedMock } from "@tsxo/libsol/mocks/auth/OwnedMock.sol";
 
 interface TestEvents {
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
@@ -12,14 +12,14 @@ contract OwnedTest is Test, TestEvents {
     // -------------------------------------------------------------------------
     // State
 
-    OwnedImpl owned;
+    OwnedMock owned;
     address constant owner = address(0x1234);
 
     // -------------------------------------------------------------------------
     // Set Up
 
     function setUp() public {
-        owned = new OwnedImpl(owner);
+        owned = new OwnedMock(owner);
     }
 
     // -------------------------------------------------------------------------
@@ -32,7 +32,7 @@ contract OwnedTest is Test, TestEvents {
     function test_RevertsOnConstructionWithZeroAddress() public {
         bytes4 err = IOwned.Owned__ZeroAddress.selector;
         vm.expectRevert(err);
-        new OwnedImpl(address(0));
+        new OwnedMock(address(0));
     }
 
     // -------------------------------------------------------------------------
