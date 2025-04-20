@@ -39,25 +39,10 @@ import { IAuthority } from "./IAuthority.sol";
 /// Instead, favour function composition to ensure proper access control. Failure
 /// to follow these rules can lead to critical security issues.
 ///
-/// # Disclaimer
-///
-/// This contract prioritizes an opinionated balance between optimization and
-/// readability. **It was not designed with user safety in mind** and contains
-/// minimal safety checks. It is experimental software and is provided **as-is**,
-/// without any warranties or guarantees of functionality, security, or fitness
-/// for any particular purpose.
-///
-/// There are implicit invariants this contract expects to hold. Users and
-/// developers integrating this contract **do so at their own risk** and are
-/// responsible for thoroughly reviewing the code before use.
-///
-/// The author assumes **no liability** for any loss, damage, or unintended
-/// behavior resulting from the use, deployment, or interaction with this contract.
-///
 /// # Acknowledgements
 ///
 /// Heavy inspiration is taken from:
-/// - Open Zeppelin;
+/// - OpenZeppelin;
 /// - Solmate; and
 /// - Solady.
 ///
@@ -75,7 +60,7 @@ abstract contract AuthManaged is IAuthManaged {
     // State
 
     /// @dev keccak256(abi.encode(uint256(keccak256("libsol.storage.AuthManaged")) - 1)) & ~bytes32(uint256(0xff))
-    bytes32 private constant STORAGE = 0xba07b3ca0f769fbcf052f5eef32e58c07f3aeeec01c8167517b7043932526600;
+    bytes32 private constant MANAGED_SLOT = 0xba07b3ca0f769fbcf052f5eef32e58c07f3aeeec01c8167517b7043932526600;
 
     /// @dev keccak256(bytes("AuthorityUpdated(address,address)"))
     bytes32 private constant AUTHORITY_UPDATED = 0xa3396fd7f6e0a21b50e5089d2da70d5ac0a3bbbd1f617a93f134b76389980198;
@@ -121,7 +106,7 @@ abstract contract AuthManaged is IAuthManaged {
     /// @inheritdoc IAuthManaged
     function setAuthority(address newAuthority) public virtual {
         assembly ("memory-safe") {
-            if iszero(eq(caller(), sload(STORAGE))) {
+            if iszero(eq(caller(), sload(MANAGED_SLOT))) {
                 mstore(0x00, 0x3583568e) // `AuthManaged__Unauthorized()`
                 revert(0x1c, 0x04)
             }
@@ -133,7 +118,7 @@ abstract contract AuthManaged is IAuthManaged {
     /// @inheritdoc IAuthManaged
     function authority() public view virtual returns (address result) {
         assembly ("memory-safe") {
-            result := sload(STORAGE)
+            result := sload(MANAGED_SLOT)
         }
     }
 
@@ -150,8 +135,8 @@ abstract contract AuthManaged is IAuthManaged {
     /// Emits an `AuthorityUpdated` event.
     function _setAuthority(address newAuthority) internal virtual {
         assembly ("memory-safe") {
-            log3(0, 0, AUTHORITY_UPDATED, sload(STORAGE), newAuthority)
-            sstore(STORAGE, newAuthority)
+            log3(0x00, 0x00, AUTHORITY_UPDATED, sload(MANAGED_SLOT), newAuthority)
+            sstore(MANAGED_SLOT, newAuthority)
         }
     }
 
@@ -163,7 +148,7 @@ abstract contract AuthManaged is IAuthManaged {
     function _assertAuthorized(address user, bytes4 selector) internal view virtual {
         assembly ("memory-safe") {
             let ptr := mload(0x40)
-            let manager := sload(STORAGE)
+            let manager := sload(MANAGED_SLOT)
 
             mstore(ptr, CAN_CALL)
             mstore(add(ptr, 0x04), user)
@@ -174,8 +159,8 @@ abstract contract AuthManaged is IAuthManaged {
 
             let success := staticcall(gas(), manager, ptr, 0x64, 0x00, 0x20)
 
-            if iszero(eq(returndatasize(), 0x20)) { revert(0, 0) }
-            if iszero(success) { revert(0, 0) }
+            if iszero(success) { revert(0x00, 0x00) }
+            if iszero(eq(returndatasize(), 0x20)) { revert(0x00, 0x00) }
 
             let result := mload(0x00)
             if iszero(result) {

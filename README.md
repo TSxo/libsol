@@ -21,12 +21,26 @@ The smart contracts are located in the `src` directory.
 │   └── Mutex.sol
 ```
 
-## Work in Progress
+## Purpose & License
 
-This project is currently under development. New modules and features will
-be added to enhance functionality and performance.
+This project is primarily for research purposes. It is licensed under MIT, and
+you are free to use the code however you wish. Please be sure to carefully note
+the disclaimer section below.
 
-Contributions and suggestions are welcomed.
+Many of the patterns implemented in this repository are well-known and
+popularized by established projects in the ecosystem. My thanks and appreciation
+to the many developers whose work has influenced this project.
+
+Notably, heavy inspiration is taken from:
+
+- [Solmate](https://github.com/transmissions11/solmate)
+- [OpenZeppelin](https://github.com/OpenZeppelin/openzeppelin-contracts)
+- [Solady](https://github.com/Vectorized/solady)
+
+This project is under active development. New modules and features will be added
+to enhance functionality and performance.
+
+Contributions and suggestions are welcome.
 
 ## Disclaimer
 
@@ -42,13 +56,3 @@ responsible for thoroughly reviewing the code before use.
 
 The author assumes **no liability** for any loss, damage, or unintended
 behavior resulting from the use, deployment, or interaction with this contract.
-
-## Acknowledgements
-
-Heavy inspiration is taken from:
-
-- [Solmate](https://github.com/transmissions11/solmate)
-- [OpenZeppelin](https://github.com/OpenZeppelin/openzeppelin-contracts)
-- [Solady](https://github.com/Vectorized/solady)
-
-Thank you.
