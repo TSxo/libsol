@@ -3,6 +3,9 @@ pragma solidity ^0.8.20;
 
 import { UUPSImplementation } from "@tsxo/libsol/proxy/UUPS/UUPSImplementation.sol";
 
+error Unauthorized();
+error AlreadyInitialized();
+
 contract UUPSCounterMock is UUPSImplementation {
     uint256 private _count;
     address private _owner;
@@ -19,7 +22,7 @@ contract UUPSCounterMock is UUPSImplementation {
     }
 
     function initialize() external {
-        require(_owner == address(0), "Already initialized");
+        if (_owner != address(0)) revert AlreadyInitialized();
         _owner = msg.sender;
     }
 
@@ -51,7 +54,7 @@ contract UUPSCounterMock is UUPSImplementation {
     }
 
     function _authorizeUpgrade(address) internal override {
-        require(msg.sender == _owner, "Not authorized");
+        if (msg.sender != _owner) revert Unauthorized();
     }
 }
 
@@ -96,7 +99,7 @@ contract UUPSCounterV2Mock is UUPSImplementation {
         emit Received(msg.value);
     }
 
-    function _authorizeUpgrade(address) internal override {
-        require(msg.sender == _owner, "Not authorized");
+    function _authorizeUpgrade(address) internal view override {
+        if (msg.sender != _owner) revert Unauthorized();
     }
 }

@@ -3,8 +3,12 @@ pragma solidity ^0.8.20;
 
 import { Test } from "forge-std/Test.sol";
 import { UUPSProxy } from "@tsxo/libsol/proxy/UUPS/UUPSProxy.sol";
+import { ERC1967Logic } from "@tsxo/libsol/proxy/ERC1967/ERC1967Logic.sol";
 import { UUPSCounterMock, UUPSCounterV2Mock } from "@tsxo/libsol/mocks/proxy/UUPS/UUPSImplementationMock.sol";
-import { console } from "forge-std/console.sol";
+import {
+    NonCompliantContract,
+    WrongImplementationSlotContract
+} from "@tsxo/libsol/mocks/proxy/UUPS/UUPSNonCompliantMock.sol";
 
 interface TestEvents {
     event Upgraded(address indexed impl);
@@ -29,28 +33,34 @@ contract UUPSTest is Test, TestEvents {
 
     function setUp() public {
         bytes memory initData = abi.encodeWithSignature("initialize()");
+
         impl = new UUPSCounterMock();
         implV2 = new UUPSCounterV2Mock();
-
         proxy = new UUPSProxy(address(impl), initData);
+
         proxied = UUPSCounterMock(payable(address(proxy)));
     }
 
     // -------------------------------------------------------------------------
-    // Tests
+    // Proxy Construction Tests
 
-    function test_ProxyConstructor_ERC1822Compliant() public {
+    function test_ProxyConstructor_RejectsNonERC1822CompliantContracts() public {
+        bytes4 err = ERC1967Logic.ERC1967Logic__UpgradeFailed.selector;
+
         address wrongSlot = address(new WrongImplementationSlotContract());
         address nonCompliant = address(new NonCompliantContract());
 
-        vm.expectRevert();
+        vm.expectRevert(err);
         new UUPSProxy(wrongSlot, "");
 
         vm.expectRevert();
         new UUPSProxy(nonCompliant, "");
     }
 
-    function test_ProxyInitialization() public {
+    // -------------------------------------------------------------------------
+    // Proxy Initialization Tests
+
+    function test_ProxyInitialization() public view {
         bytes memory countCall = abi.encodeWithSignature("count()");
         (bool success, bytes memory data) = address(proxy).staticcall(countCall);
         uint256 count = abi.decode(data, (uint256));
@@ -59,7 +69,10 @@ contract UUPSTest is Test, TestEvents {
         assertEq(count, 0);
     }
 
-    function test_ProxyCalls() public {
+    // -------------------------------------------------------------------------
+    // Basic Functionality Tests
+
+    function test_ProxyCalls_DelegateToImplementation() public {
         proxied.increment();
         assertEq(proxied.count(), 1);
 
@@ -72,7 +85,7 @@ contract UUPSTest is Test, TestEvents {
         assertEq(impl.count(), 0);
     }
 
-    function test_ProxyDelegatedCalls() public {
+    function test_ProxyCalls_HandlesLowLevelCalls() public {
         bytes memory countCall = abi.encodeWithSignature("count()");
         bytes memory incCall = abi.encodeWithSignature("increment()");
         bytes memory decCall = abi.encodeWithSignature("decrement()");
@@ -118,6 +131,9 @@ contract UUPSTest is Test, TestEvents {
         assertFalse(success);
     }
 
+    // -------------------------------------------------------------------------
+    // Ether Handling Tests
+
     function test_ProxyEtherHandling() public {
         bytes memory fundCall = abi.encodeWithSignature("fundMe()");
         address user = address(0x1234);
@@ -146,6 +162,9 @@ contract UUPSTest is Test, TestEvents {
 
         vm.stopPrank();
     }
+
+    // -------------------------------------------------------------------------
+    // Upgrade Tests
 
     function test_Upgrade() public {
         proxied.setCount(5);
@@ -194,7 +213,7 @@ contract UUPSTest is Test, TestEvents {
         assertEq(proxiedV2.count(), 5);
     }
 
-    function test_FailedUpgradeNotERC1822Compliant() public {
+    function test_FailedUpgrade_NotERC1822Compliant() public {
         address nonCompliant = address(new NonCompliantContract());
 
         bytes memory upgradeCall = abi.encodeWithSignature("upgradeToAndCall(address,bytes)", nonCompliant, "");
@@ -203,7 +222,7 @@ contract UUPSTest is Test, TestEvents {
         assertFalse(success);
     }
 
-    function test_FailedUpgradeWrongImplementationSlot() public {
+    function test_FailedUpgrade_WrongImplementationSlot() public {
         address wrongSlot = address(new WrongImplementationSlotContract());
 
         bytes memory upgradeCall = abi.encodeWithSignature("upgradeToAndCall(address,bytes)", wrongSlot, "");
@@ -212,7 +231,7 @@ contract UUPSTest is Test, TestEvents {
         assertFalse(success);
     }
 
-    function test_FailedUpgradeUnauthorized() public {
+    function test_FailedUpgrade_Unauthorized() public {
         address attacker = address(0x5678);
         vm.startPrank(attacker);
 
@@ -224,32 +243,75 @@ contract UUPSTest is Test, TestEvents {
         vm.stopPrank();
     }
 
-    function test_ProxiableUUID_DirectCallSucceeds() public {
+    // -------------------------------------------------------------------------
+    // Call Context
+
+    function test_ProxiableUUID_DirectCallSucceeds() public view {
         bytes32 actualSlot = impl.proxiableUUID();
         assertEq(actualSlot, IMPLEMENTATION_SLOT);
     }
 
-    function test_ProxiableUUID_ProxiedCallReverts() public {
+    function test_ProxiableUUID_ProxiedCallReverts() public view {
         bytes memory proxiableUUIDCall = abi.encodeWithSignature("proxiableUUID()");
 
         (bool success,) = address(proxy).staticcall(proxiableUUIDCall);
         assertFalse(success);
     }
 
-    function test_UpgradeToAndCall_CallReverts() public {
+    function test_UpgradeToAndCall_DirectCallReverts() public {
         address tempImpl = address(new UUPSCounterV2Mock());
 
         vm.expectRevert();
         impl.upgradeToAndCall(tempImpl, "");
     }
-}
 
-/// @dev Does not implement proxiableUUID.
-contract NonCompliantContract { }
+    // -------------------------------------------------------------------------
+    // Fuzz Tests
 
-/// @dev Returns the wrong implementation slot.
-contract WrongImplementationSlotContract {
-    function proxiableUUID() external pure returns (bytes32) {
-        return bytes32(keccak256("WRONG_IMPLEMENTATION_SLOT"));
+    function testFuzz_SetCount(uint256 newCount) public {
+        proxied.setCount(newCount);
+        assertEq(impl.count(), 0);
+        assertEq(proxied.count(), newCount);
+    }
+
+    function testFuzz_MultipleUpgradesPreserveState(uint256 startCount) public {
+        proxied.setCount(startCount);
+        assertEq(proxied.count(), startCount);
+
+        bytes memory initCall = abi.encodeWithSignature("markAsUpgraded()");
+        bytes memory upgradeCall = abi.encodeWithSignature("upgradeToAndCall(address,bytes)", address(implV2), initCall);
+
+        (bool success,) = address(proxy).call(upgradeCall);
+        assertTrue(success);
+
+        UUPSCounterV2Mock proxiedV2 = UUPSCounterV2Mock(payable(address(proxy)));
+        assertEq(proxiedV2.count(), startCount);
+        assertTrue(proxiedV2.upgraded());
+
+        UUPSCounterV2Mock implV3 = new UUPSCounterV2Mock();
+
+        upgradeCall = abi.encodeWithSignature("upgradeToAndCall(address,bytes)", address(implV3), initCall);
+        (success,) = address(proxy).call(upgradeCall);
+        assertTrue(success);
+
+        UUPSCounterV2Mock proxiedV3 = UUPSCounterV2Mock(payable(address(proxy)));
+        assertEq(proxiedV3.count(), startCount);
+        assertTrue(proxiedV3.upgraded());
+    }
+
+    function testFuzz_EtherHandling(uint256 amount) public {
+        vm.assume(amount > 0 && amount < 10 ether);
+
+        (bool success,) = address(proxy).call{ value: amount }("");
+        assertTrue(success);
+        assertEq(address(proxy).balance, amount);
+    }
+
+    // -------------------------------------------------------------------------
+    // Invariant Tests
+
+    function invariant_ImplementationSlotMatchesProxiableUUID() public view {
+        bytes32 actualSlot = impl.proxiableUUID();
+        assertEq(actualSlot, IMPLEMENTATION_SLOT);
     }
 }

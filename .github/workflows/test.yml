@@ -2,7 +2,13 @@ name: CI
 
 on:
   push:
+    branches: [ main ]
   pull_request:
+    branches: [ main ]
+    types:
+      - opened
+      - edited
+      - synchronize
   workflow_dispatch:
 
 env:
