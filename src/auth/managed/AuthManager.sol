@@ -171,8 +171,8 @@ contract AuthManager is IAuthority, IAuthManager {
 
             let success := call(gas(), target, 0x00, 0x00, 0x24, 0x00, 0x00)
 
-            if iszero(eq(returndatasize(), 0x00)) { revert(0x00, 0x00) }
             if iszero(success) { revert(0x00, 0x00) }
+            if iszero(eq(returndatasize(), 0x00)) { revert(0x00, 0x00) }
 
             log3(0x00, 0x00, AUTHORITY_UPDATED, target, newAuthority)
         }
@@ -385,8 +385,8 @@ contract AuthManager is IAuthority, IAuthManager {
             mstore(0x00, 0x8da5cb5b) // `owner()`
             let success := staticcall(gas(), address(), 0x1c, 0x04, 0x00, 0x20)
 
-            if iszero(eq(returndatasize(), 0x20)) { revert(0x00, 0x00) }
             if iszero(success) { revert(0x00, 0x00) }
+            if iszero(eq(returndatasize(), 0x20)) { revert(0x00, 0x00) }
 
             if iszero(eq(caller(), mload(0x00))) {
                 mstore(0x0, 0x336eb95b) // `AuthManager__Unauthorized()`

@@ -1,12 +1,15 @@
 # libsol
 
+[![CI](https://github.com/TSxo/libsol/actions/workflows/test.yml/badge.svg)](https://github.com/TSxo/libsol/actions/workflows/test.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](https://opensource.org/licenses/MIT)
+
 A suite of opinionated, optimized smart contract modules.
 
 ## Contracts
 
 The smart contracts are located in the `src` directory.
 
-```ml
+```
 .
 ├── auth
 │   ├── IOwned.sol
@@ -21,7 +24,12 @@ The smart contracts are located in the `src` directory.
 │   ├── CallContext.sol
 │   └── Mutex.sol
 └── proxy
+    ├── ERC1967
+    │   └── ERC1967Logic.sol
     ├── Proxy.sol
+    └── UUPS
+        ├── UUPSImplementation.sol
+        └── UUPSProxy.sol
 ```
 
 ## Purpose & License
