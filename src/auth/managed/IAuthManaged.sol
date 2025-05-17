@@ -32,6 +32,8 @@ interface IAuthManaged {
     ///
     /// @dev Requirements:
     /// - Only callable by the current Authority.
+    ///
+    /// Emits an `AuthorityUpdated` event.
     function setAuthority(address newAuthority) external;
 
     /// @notice Returns the current Authority.

@@ -35,6 +35,13 @@ contract AuthManagedTest is Test, TestEvents {
     }
 
     // -------------------------------------------------------------------------
+    // Test - Initialization
+
+    function test_Initialization() public view {
+        assertEq(managed.authority(), address(manager));
+    }
+
+    // -------------------------------------------------------------------------
     // Test - Set Authority
 
     function test_SetAuthorityRevertsOnUnauthorizedCalls() public {
@@ -49,7 +56,8 @@ contract AuthManagedTest is Test, TestEvents {
     function test_SetAuthority() public {
         address target = address(managed);
         address newAuthority = address(0x9876);
-        vm.expectEmit(true, true, false, true, address(managed));
+
+        vm.expectEmit(true, true, false, false, address(managed));
         emit AuthorityUpdated(address(manager), newAuthority);
 
         vm.prank(owner);
@@ -88,29 +96,11 @@ contract AuthManagedTest is Test, TestEvents {
 
         // Set `decrement` function access: 1
         manager.setRoleAccess(target, dec, 1, true);
-        vm.stopPrank();
-
-        // Should revert if the contract is paused.
-        vm.prank(owner);
-        manager.setPaused(target, true);
-
-        vm.startPrank(user);
-
-        vm.expectRevert(err);
-        managed.increment();
-
-        vm.expectRevert(err);
-        managed.decrement();
-
-        vm.stopPrank();
-
-        vm.prank(owner);
-        manager.setPaused(target, false);
 
         // Should revert if the target function is closed.
-        vm.startPrank(owner);
         manager.setFunctionClosed(target, inc, true);
         manager.setFunctionClosed(target, dec, true);
+
         vm.stopPrank();
 
         vm.startPrank(user);

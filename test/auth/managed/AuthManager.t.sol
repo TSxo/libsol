@@ -11,7 +11,6 @@ import { AuthManagerMock } from "@tsxo/libsol/mocks/auth/managed/AuthManagerMock
 interface TestEvents {
     event UserRoleUpdated(address indexed user, uint8 indexed role, bool enabled);
     event AccessUpdated(address indexed target, bytes4 indexed selector, uint8 indexed role, bool enabled);
-    event Paused(address indexed target, bool enabled);
     event AuthorityUpdated(address indexed target, address indexed newAuthority);
 }
 
@@ -262,65 +261,13 @@ contract AuthManagerTest is Test, TestEvents {
     }
 
     // -------------------------------------------------------------------------
-    // Test - Pause
-
-    function test_SetPause() public {
-        vm.startPrank(owner);
-
-        address target = address(managed);
-        bool enabled = true;
-
-        // Initial state check.
-        assertEq(manager.isPaused(target), false);
-
-        // Pause
-        vm.expectEmit(true, true, false, true, address(manager));
-        emit Paused(target, enabled);
-
-        manager.setPaused(target, enabled);
-        assertEq(manager.isPaused(target), enabled);
-
-        // Resume
-        vm.expectEmit(true, true, false, true, address(manager));
-        emit Paused(target, !enabled);
-
-        manager.setPaused(target, !enabled);
-        assertEq(manager.isPaused(target), !enabled);
-
-        vm.stopPrank();
-    }
-
-    function testFuzz_SetPause(address target, bool enabled) public {
-        assertEq(manager.isPaused(target), false);
-
-        vm.expectEmit(true, true, false, true, address(manager));
-        emit Paused(target, enabled);
-
-        vm.prank(owner);
-        manager.setPaused(target, enabled);
-        assertEq(manager.isPaused(target), enabled);
-    }
-
-    function testFuzz_OnlyOwnerCanSetPaused(address user) public {
-        vm.assume(user != owner);
-        vm.prank(user);
-
-        address target = address(managed);
-        bool enabled = true;
-
-        bytes4 err = IAuthManager.AuthManager__Unauthorized.selector;
-        vm.expectRevert(err);
-
-        manager.setPaused(target, enabled);
-    }
-
-    // -------------------------------------------------------------------------
     // Test - Set Authority
 
     function test_SetAuthority() public {
         address target = address(managed);
         address newAuthority = address(0x9876);
-        vm.expectEmit(true, true, false, true, address(manager));
+
+        vm.expectEmit(true, true, false, false, address(manager));
         emit AuthorityUpdated(target, newAuthority);
 
         vm.prank(owner);
@@ -385,17 +332,6 @@ contract AuthManagerTest is Test, TestEvents {
         // User A has access to Increment and Decrement.
         // User B has access to Increment and Decrement.
         // User C has access to Decrement.
-
-        // Should return false if the contract is paused.
-        manager.setPaused(target, true);
-        assertEq(manager.canCall(userA, target, inc), false);
-        assertEq(manager.canCall(userB, target, inc), false);
-        assertEq(manager.canCall(userC, target, inc), false);
-
-        assertEq(manager.canCall(userA, target, dec), false);
-        assertEq(manager.canCall(userB, target, dec), false);
-        assertEq(manager.canCall(userC, target, dec), false);
-        manager.setPaused(target, false);
 
         // Should return false if the target function is closed.
         manager.setFunctionClosed(target, inc, true);

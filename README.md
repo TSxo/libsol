@@ -13,16 +13,25 @@ The smart contracts are located in the `src` directory.
 .
 ├── auth
 │   ├── IOwned.sol
-│   ├── Owned.sol
-│   └── managed
-│       ├── AuthManaged.sol
-│       ├── AuthManager.sol
-│       ├── IAuthManaged.sol
-│       ├── IAuthManager.sol
-│       └── IAuthority.sol
+│   ├── managed
+│   │   ├── AuthManaged.sol
+│   │   ├── AuthManager.sol
+│   │   ├── IAuthManaged.sol
+│   │   ├── IAuthManager.sol
+│   │   └── IAuthority.sol
+│   └── Owned.sol
 ├── mixins
 │   ├── CallContext.sol
 │   └── Mutex.sol
+├── pause
+│   ├── IPausable.sol
+│   ├── managed
+│   │   ├── IPauseAuthority.sol
+│   │   ├── IPauseManaged.sol
+│   │   ├── IPauseManager.sol
+│   │   ├── PauseManaged.sol
+│   │   └── PauseManager.sol
+│   └── Pausable.sol
 └── proxy
     ├── ERC1967
     │   └── ERC1967Logic.sol
@@ -30,6 +39,7 @@ The smart contracts are located in the `src` directory.
     └── UUPS
         ├── UUPSImplementation.sol
         └── UUPSProxy.sol
+
 ```
 
 ## Purpose & License

@@ -26,23 +26,11 @@ interface IAuthManager {
     /// @param enabled  Whether the role was enabled.
     event AccessUpdated(address indexed target, bytes4 indexed selector, uint8 indexed role, bool enabled);
 
-    /// @notice Emitted when a target contract's paused status has been updated.
-    ///
-    /// @param target   The target contract.
-    /// @param enabled  Whether the target contract has been paused.
-    event Paused(address indexed target, bool enabled);
-
-    /// @notice Emitted when a target contract's Authority is updated.
-    ///
-    /// @param target       The target contract.
-    /// @param newAuthority The address of the new Authority.
-    event AuthorityUpdated(address indexed target, address indexed newAuthority);
-
     // -------------------------------------------------------------------------
     // Errors
 
-    /// @notice Raised when a caller does not have permission to invoke a
-    /// target function.
+    /// @notice Raised when a caller does not have permission to invoke a target
+    /// function.
     error AuthManager__Unauthorized();
 
     /// @notice Raised when attempting to set an invalid role.
@@ -102,17 +90,6 @@ interface IAuthManager {
     /// Emits an `AccessUpdated` event.
     function setRoleAccess(address target, bytes4 selector, uint8 role, bool enabled) external;
 
-    /// @notice Pauses or unpauses a target contract.
-    ///
-    /// @param target   The address of the target contract.
-    /// @param enabled  True to pause the contract, false to unpause it.
-    ///
-    /// @dev Requirements:
-    /// - Only callable by the owner.
-    ///
-    /// Emits a `Paused` event.
-    function setPaused(address target, bool enabled) external;
-
     /// @notice Retrieves the role bitmask for a user.
     ///
     /// @param user The address of the user.
@@ -165,11 +142,4 @@ interface IAuthManager {
     ///
     /// @return result True if the function is public, false otherwise.
     function isFunctionPublic(address target, bytes4 selector) external view returns (bool result);
-
-    /// @notice Checks whether a target contract is paused.
-    ///
-    /// @param target The address of the target contract.
-    ///
-    /// @return result True if the target contract is paused, false otherwise.
-    function isPaused(address target) external view returns (bool result);
 }
