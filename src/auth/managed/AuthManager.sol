@@ -42,19 +42,14 @@ import { IAuthority } from "./IAuthority.sol";
 /// users with at least one role matching the allowed roles (bits 0 to 253) in
 /// the function’s bitmask.
 ///
-/// # Pausing
-///
-/// Target contracts can be paused. When paused, all functions with the `auth`
-/// modifier on that contract are blocked. Note, unmanaged functions (those
-/// without the `auth` modifier) remain callable.
-///
 /// # Owner
 ///
 /// All the permissions managed by this system can be modified by the owner of
 /// this instance. It is expected that this account will be highly secured.
 ///
-/// To determine the owner, this contract performs a self-staticcall to the
-/// `owner()` function - meaning any ERC-173 compliant contract is suitable.
+/// To determine the owner, this contract performs a staticcall to its own
+/// `owner()` function. This allows compatibility with any contract that adheres
+/// to the ERC-173 ownership standard.
 ///
 /// # Upgrade Compatible
 ///
@@ -69,7 +64,7 @@ import { IAuthority } from "./IAuthority.sol";
 /// - Solady.
 ///
 /// Thank you.
-contract AuthManager is IAuthority, IAuthManager {
+abstract contract AuthManager is IAuthManager, IAuthority {
     // -------------------------------------------------------------------------
     // Type Declarations
 
@@ -77,23 +72,19 @@ contract AuthManager is IAuthority, IAuthManager {
     struct AuthManagerStorage {
         mapping(address => uint256) userRoles;
         mapping(address => mapping(bytes4 => uint256)) access;
-        mapping(address => bool) paused;
     }
 
     // -------------------------------------------------------------------------
     // State
 
     /// @dev keccak256(abi.encode(uint256(keccak256("libsol.storage.AuthManager")) - 1)) & ~bytes32(uint256(0xff))
-    bytes32 private constant MANAGER_SLOT = 0x938700b07e50a0d76711cd0ee77205e6b6a2709fd62fa43819e05a1a4baac400;
+    bytes32 private constant AUTH_MANAGER_SLOT = 0x938700b07e50a0d76711cd0ee77205e6b6a2709fd62fa43819e05a1a4baac400;
 
     /// @dev keccak256(bytes("UserRoleUpdated(address,uint8,bool)"))
     bytes32 private constant USER_ROLE_UPDATED = 0x4c9bdd0c8e073eb5eda2250b18d8e5121ff27b62064fbeeeed4869bb99bc5bf2;
 
     /// @dev keccak256(bytes("AccessUpdated(address,bytes4,uint8,bool)"))
     bytes32 private constant ACCESS_UPDATED = 0xdb20781f7ac6b1c66139899bc76388269b478dbb402af50576a4c997b473d564;
-
-    /// @dev keccak256(bytes("Paused(address,bool)"))
-    bytes32 private constant PAUSED = 0xe8699cf681560fd07de85543bd994263f4557bdc5179dd702f256d15fd083e1d;
 
     /// @dev keccak256(bytes("AuthorityUpdated(address,address)"))
     bytes32 private constant AUTHORITY_UPDATED = 0xa3396fd7f6e0a21b50e5089d2da70d5ac0a3bbbd1f617a93f134b76389980198;
@@ -145,22 +136,6 @@ contract AuthManager is IAuthority, IAuthManager {
         _setAccess(target, selector, role, enabled);
     }
 
-    /// @inheritdoc IAuthManager
-    function setPaused(address target, bool enabled) public virtual {
-        _assertAuthManagerOwner();
-
-        assembly ("memory-safe") {
-            mstore(0x00, target)
-            mstore(0x20, add(MANAGER_SLOT, 2))
-            let slot := keccak256(0x00, 0x40)
-
-            sstore(slot, enabled)
-
-            mstore(0x00, enabled)
-            log2(0x00, 0x20, PAUSED, target)
-        }
-    }
-
     /// @inheritdoc IAuthority
     function setAuthority(address target, address newAuthority) public virtual {
         _assertAuthManagerOwner();
@@ -181,24 +156,14 @@ contract AuthManager is IAuthority, IAuthManager {
     /// @inheritdoc IAuthority
     function canCall(address user, address target, bytes4 selector) public view virtual returns (bool result) {
         assembly ("memory-safe") {
-            // Check whether the target contract is paused.
-            mstore(0x00, target)
-            mstore(0x20, add(MANAGER_SLOT, 2))
-            let slot := keccak256(0x00, 0x40)
-
-            if sload(slot) {
-                mstore(0x00, 0x00)
-                return(0x00, 0x20)
-            }
-
             // Retrieve the target function's access rules.
             mstore(0x00, target)
-            mstore(0x20, add(MANAGER_SLOT, 1))
+            mstore(0x20, add(AUTH_MANAGER_SLOT, 1))
             let innerSlot := keccak256(0x00, 0x40)
 
             mstore(0x00, selector)
             mstore(0x20, innerSlot)
-            slot := keccak256(0x00, 0x40)
+            let slot := keccak256(0x00, 0x40)
 
             let accessMask := sload(slot)
 
@@ -219,7 +184,7 @@ contract AuthManager is IAuthority, IAuthManager {
 
             // Retrieve the user's active roles.
             mstore(0x00, user)
-            mstore(0x20, MANAGER_SLOT)
+            mstore(0x20, AUTH_MANAGER_SLOT)
             slot := keccak256(0x00, 0x40)
 
             let roles := sload(slot)
@@ -233,7 +198,7 @@ contract AuthManager is IAuthority, IAuthManager {
     function userRoles(address user) public view virtual returns (uint256 result) {
         assembly ("memory-safe") {
             mstore(0x00, user)
-            mstore(0x20, MANAGER_SLOT)
+            mstore(0x20, AUTH_MANAGER_SLOT)
             let slot := keccak256(0x00, 0x40)
 
             result := sload(slot)
@@ -244,7 +209,7 @@ contract AuthManager is IAuthority, IAuthManager {
     function hasRole(address user, uint8 role) public view virtual returns (bool result) {
         assembly ("memory-safe") {
             mstore(0x00, user)
-            mstore(0x20, MANAGER_SLOT)
+            mstore(0x20, AUTH_MANAGER_SLOT)
             let slot := keccak256(0x00, 0x40)
 
             result := iszero(iszero(and(sload(slot), shl(role, 1))))
@@ -255,7 +220,7 @@ contract AuthManager is IAuthority, IAuthManager {
     function functionAccess(address target, bytes4 selector) public view virtual returns (uint256 result) {
         assembly ("memory-safe") {
             mstore(0x00, target)
-            mstore(0x20, add(MANAGER_SLOT, 1))
+            mstore(0x20, add(AUTH_MANAGER_SLOT, 1))
             let innerSlot := keccak256(0x00, 0x40)
 
             mstore(0x00, selector)
@@ -268,7 +233,7 @@ contract AuthManager is IAuthority, IAuthManager {
     function roleHasAccess(address target, bytes4 selector, uint8 role) public view virtual returns (bool result) {
         assembly ("memory-safe") {
             mstore(0x00, target)
-            mstore(0x20, add(MANAGER_SLOT, 1))
+            mstore(0x20, add(AUTH_MANAGER_SLOT, 1))
             let innerSlot := keccak256(0x00, 0x40)
 
             mstore(0x00, selector)
@@ -284,7 +249,7 @@ contract AuthManager is IAuthority, IAuthManager {
     function isFunctionClosed(address target, bytes4 selector) public view virtual returns (bool result) {
         assembly ("memory-safe") {
             mstore(0x00, target)
-            mstore(0x20, add(MANAGER_SLOT, 1))
+            mstore(0x20, add(AUTH_MANAGER_SLOT, 1))
             let innerSlot := keccak256(0x00, 0x40)
 
             mstore(0x00, selector)
@@ -300,7 +265,7 @@ contract AuthManager is IAuthority, IAuthManager {
     function isFunctionPublic(address target, bytes4 selector) public view virtual returns (bool result) {
         assembly ("memory-safe") {
             mstore(0x00, target)
-            mstore(0x20, add(MANAGER_SLOT, 1))
+            mstore(0x20, add(AUTH_MANAGER_SLOT, 1))
             let innerSlot := keccak256(0x00, 0x40)
 
             mstore(0x00, selector)
@@ -309,15 +274,6 @@ contract AuthManager is IAuthority, IAuthManager {
 
             let data := sload(slot)
             result := iszero(iszero(and(data, PUBLIC_MASK)))
-        }
-    }
-
-    /// @inheritdoc IAuthManager
-    function isPaused(address target) public view virtual returns (bool result) {
-        assembly ("memory-safe") {
-            mstore(0x00, target)
-            mstore(0x20, add(MANAGER_SLOT, 2))
-            result := sload(keccak256(0x00, 0x40))
         }
     }
 
@@ -337,7 +293,7 @@ contract AuthManager is IAuthority, IAuthManager {
     function _setUserRole(address user, uint8 role, bool enabled) internal virtual {
         assembly ("memory-safe") {
             mstore(0x00, user)
-            mstore(0x20, MANAGER_SLOT)
+            mstore(0x20, AUTH_MANAGER_SLOT)
             let slot := keccak256(0x00, 0x40)
 
             switch enabled
@@ -363,7 +319,7 @@ contract AuthManager is IAuthority, IAuthManager {
     function _setAccess(address target, bytes4 selector, uint8 shift, bool enabled) internal virtual {
         assembly ("memory-safe") {
             mstore(0x00, target)
-            mstore(0x20, add(MANAGER_SLOT, 1))
+            mstore(0x20, add(AUTH_MANAGER_SLOT, 1))
             let innerSlot := keccak256(0x00, 0x40)
 
             mstore(0x00, selector)

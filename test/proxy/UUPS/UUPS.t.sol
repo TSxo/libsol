@@ -42,7 +42,7 @@ contract UUPSTest is Test, TestEvents {
     }
 
     // -------------------------------------------------------------------------
-    // Proxy Construction Tests
+    // Test - Proxy Construction
 
     function test_ProxyConstructor_RejectsNonERC1822CompliantContracts() public {
         bytes4 err = ERC1967Logic.ERC1967Logic__UpgradeFailed.selector;
@@ -58,7 +58,7 @@ contract UUPSTest is Test, TestEvents {
     }
 
     // -------------------------------------------------------------------------
-    // Proxy Initialization Tests
+    // Test - Proxy Initialization
 
     function test_ProxyInitialization() public view {
         bytes memory countCall = abi.encodeWithSignature("count()");
@@ -132,7 +132,7 @@ contract UUPSTest is Test, TestEvents {
     }
 
     // -------------------------------------------------------------------------
-    // Ether Handling Tests
+    // Test - Ether Handling
 
     function test_ProxyEtherHandling() public {
         bytes memory fundCall = abi.encodeWithSignature("fundMe()");
@@ -164,7 +164,7 @@ contract UUPSTest is Test, TestEvents {
     }
 
     // -------------------------------------------------------------------------
-    // Upgrade Tests
+    // Test - Upgrade
 
     function test_Upgrade() public {
         proxied.setCount(5);
@@ -244,7 +244,7 @@ contract UUPSTest is Test, TestEvents {
     }
 
     // -------------------------------------------------------------------------
-    // Call Context
+    // Test - Call Context
 
     function test_ProxiableUUID_DirectCallSucceeds() public view {
         bytes32 actualSlot = impl.proxiableUUID();

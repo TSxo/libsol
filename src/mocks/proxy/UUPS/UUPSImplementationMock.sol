@@ -53,7 +53,7 @@ contract UUPSCounterMock is UUPSImplementation {
         return _owner;
     }
 
-    function _authorizeUpgrade(address) internal override {
+    function _authorizeUpgrade(address) internal view override {
         if (msg.sender != _owner) revert Unauthorized();
     }
 }
