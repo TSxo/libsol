@@ -102,6 +102,7 @@ abstract contract PauseManager is IPauseManager, IPauseAuthority {
         _assertPauseManagerOwner();
 
         assembly ("memory-safe") {
+            newAuthority := shr(96, shl(96, newAuthority))
             mstore(0x00, shl(224, 0x4b90364f)) // `setPauseAuthority(address)`
             mstore(0x04, newAuthority)
 
@@ -148,6 +149,7 @@ abstract contract PauseManager is IPauseManager, IPauseAuthority {
     /// Emits a `TargetStatusUpdated` event.
     function _setTargetPaused(address target, bool enabled) internal virtual {
         assembly ("memory-safe") {
+            target := shr(96, shl(96, target))
             mstore(0x00, target)
             mstore(0x20, add(PAUSE_MANAGER_SLOT, 1))
             let slot := keccak256(0x00, 0x40)

@@ -50,6 +50,7 @@ abstract contract UUPSImplementation is CallContext, ERC1967Logic {
         _authorizeUpgrade(newImplementation);
 
         assembly ("memory-safe") {
+            newImplementation := shr(96, shl(96, newImplementation))
             mstore(0x00, 0x52d1902d) // `proxiableUUID()`
 
             let success := staticcall(gas(), newImplementation, 0x1c, 0x04, 0x00, 0x20)
