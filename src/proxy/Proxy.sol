@@ -41,7 +41,7 @@ abstract contract Proxy {
         assembly ("memory-safe") {
             calldatacopy(0x00, 0x00, calldatasize())
 
-            let success := delegatecall(gas(), implementation, 0, calldatasize(), 0, 0)
+            let success := delegatecall(gas(), implementation, 0x00, calldatasize(), 0x00, 0x00)
 
             returndatacopy(0x00, 0x00, returndatasize())
 

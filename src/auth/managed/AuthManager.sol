@@ -141,6 +141,7 @@ abstract contract AuthManager is IAuthManager, IAuthority {
         _assertAuthManagerOwner();
 
         assembly ("memory-safe") {
+            newAuthority := shr(96, shl(96, newAuthority))
             mstore(0x00, shl(224, 0x7a9e5e4b)) // `setAuthority(address)`
             mstore(0x04, newAuthority)
 
@@ -292,6 +293,7 @@ abstract contract AuthManager is IAuthManager, IAuthority {
     /// Emits a `UserRoleUpdated` event.
     function _setUserRole(address user, uint8 role, bool enabled) internal virtual {
         assembly ("memory-safe") {
+            user := shr(96, shl(96, user))
             mstore(0x00, user)
             mstore(0x20, AUTH_MANAGER_SLOT)
             let slot := keccak256(0x00, 0x40)
@@ -318,6 +320,7 @@ abstract contract AuthManager is IAuthManager, IAuthority {
     /// Emits an `AccessUpdated` event.
     function _setAccess(address target, bytes4 selector, uint8 shift, bool enabled) internal virtual {
         assembly ("memory-safe") {
+            target := shr(96, shl(96, target))
             mstore(0x00, target)
             mstore(0x20, add(AUTH_MANAGER_SLOT, 1))
             let innerSlot := keccak256(0x00, 0x40)

@@ -36,6 +36,7 @@ contract UUPSProxy is Proxy, ERC1967Logic {
         assembly ("memory-safe") {
             mstore(0x00, 0x52d1902d) // `proxiableUUID()`
 
+            newImplementation := shr(96, shl(96, newImplementation))
             let success := staticcall(gas(), newImplementation, 0x1c, 0x04, 0x00, 0x20)
 
             if iszero(success) { revert(0x00, 0x00) }

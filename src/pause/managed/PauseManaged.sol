@@ -108,6 +108,7 @@ abstract contract PauseManaged is IPauseManaged {
     /// Emits a `PauseAuthorityUpdated` event.
     function _setPauseAuthority(address newAuthority) internal virtual {
         assembly ("memory-safe") {
+            newAuthority := shr(96, shl(96, newAuthority))
             log3(0x00, 0x00, PAUSE_AUTH_UPDATED, sload(PAUSE_MANAGED_SLOT), newAuthority)
             sstore(PAUSE_MANAGED_SLOT, newAuthority)
         }

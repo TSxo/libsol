@@ -135,6 +135,7 @@ abstract contract AuthManaged is IAuthManaged {
     /// Emits an `AuthorityUpdated` event.
     function _setAuthority(address newAuthority) internal virtual {
         assembly ("memory-safe") {
+            newAuthority := shr(96, shl(96, newAuthority))
             log3(0x00, 0x00, AUTHORITY_UPDATED, sload(AUTH_MANAGED_SLOT), newAuthority)
             sstore(AUTH_MANAGED_SLOT, newAuthority)
         }

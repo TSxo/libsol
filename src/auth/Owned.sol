@@ -108,6 +108,7 @@ abstract contract Owned is IOwned {
     /// Emits an `OwnershipTransferred` event.
     function _transferOwnership(address newOwner) internal virtual {
         assembly ("memory-safe") {
+            newOwner := shr(96, shl(96, newOwner))
             log3(0x00, 0x00, OWNERSHIP_TRANSFERRED, sload(OWNED_SLOT), newOwner)
             sstore(OWNED_SLOT, newOwner)
         }
