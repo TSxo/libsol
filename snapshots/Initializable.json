@@ -1,0 +1,8 @@
+{
+  "initialize / OpenZeppelin": "67479",
+  "initialize / Solady": "66822",
+  "initialize / libsol": "67274",
+  "reinitialize / OpenZeppelin": "33083",
+  "reinitialize / Solady": "32559",
+  "reinitialize / libsol": "32953"
+}

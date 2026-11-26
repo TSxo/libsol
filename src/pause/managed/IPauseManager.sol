@@ -1,15 +1,16 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.24;
 
 /// @title IPauseManager
 ///
 /// @author TSxo
 ///
-/// @notice The interface for the PauseManager contract.
+/// @notice Interface for the `PauseManager` contract.
 interface IPauseManager {
-    // -------------------------------------------------------------------------
+    // =========================================================================
     // Events
+    // =========================================================================
 
     /// @notice Emitted when a target contract's paused status is updated.
     ///
@@ -22,15 +23,17 @@ interface IPauseManager {
     /// @param enabled Whether the global pause was enabled.
     event GlobalStatusUpdated(bool enabled);
 
-    // -------------------------------------------------------------------------
+    // =========================================================================
     // Errors
+    // =========================================================================
 
-    /// @notice Raised when a caller does not have permission to invoke a target
-    /// function.
-    error PauseManager__Unauthorized();
+    /// @notice The target is not a contract, or returned data from
+    /// `setPauseAuthority`.
+    error PauseManager__InvalidTarget();
 
-    // -------------------------------------------------------------------------
+    // =========================================================================
     // Functions
+    // =========================================================================
 
     /// @notice Sets the paused status of a target contract.
     ///
@@ -38,7 +41,7 @@ interface IPauseManager {
     /// @param enabled  Whether to pause the target contract.
     ///
     /// @dev Requirements:
-    /// - Only callable by the owner.
+    /// - Only callable by an account `_authorizeManager` accepts.
     ///
     /// Emits a `TargetStatusUpdated` event.
     function setTargetPaused(address target, bool enabled) external;
@@ -48,12 +51,13 @@ interface IPauseManager {
     /// @param enabled Whether to enable the global pause.
     ///
     /// @dev Requirements:
-    /// - Only callable by the owner.
+    /// - Only callable by an account `_authorizeManager` accepts.
     ///
     /// Emits a `GlobalStatusUpdated` event.
     function setGloballyPaused(bool enabled) external;
 
-    /// @notice Returns whether a target contract is paused.
+    /// @notice Returns a target contract's own pause flag. Ignores the global
+    /// pause; use `isPaused` for the combined status.
     ///
     /// @param target The target contract.
     ///

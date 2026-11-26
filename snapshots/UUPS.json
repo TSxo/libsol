@@ -1,0 +1,11 @@
+{
+  "call through proxy / OpenZeppelin": "5028",
+  "call through proxy / Solady": "4907",
+  "call through proxy / libsol": "4973",
+  "deploy and initialize proxy / OpenZeppelin": "163617",
+  "deploy and initialize proxy / Solady": "149430",
+  "deploy and initialize proxy / libsol": "153389",
+  "upgradeToAndCall / OpenZeppelin": "35292",
+  "upgradeToAndCall / Solady": "34004",
+  "upgradeToAndCall / libsol": "34658"
+}

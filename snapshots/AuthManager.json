@@ -1,0 +1,8 @@
+{
+  "grant role / OpenZeppelin": "55281",
+  "grant role / Solady OwnableRoles": "47862",
+  "grant role / libsol": "48615",
+  "role-restricted call / OpenZeppelin": "35016",
+  "role-restricted call / Solady OwnableRoles": "23486",
+  "role-restricted call / libsol": "31449"
+}

@@ -1,1 +1,4 @@
 @tsxo/libsol/=src/
+@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/
+solady/=lib/solady/src/
+forge-std/=lib/forge-std/src/
