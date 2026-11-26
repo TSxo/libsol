@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.24;
 
 import { IAuthManaged } from "./IAuthManaged.sol";
 import { IAuthManager } from "./IAuthManager.sol";
@@ -10,20 +10,23 @@ import { IAuthority } from "./IAuthority.sol";
 ///
 /// @author TSxo
 ///
+/// @notice A central Authority that grants roles and decides which roles may
+/// call each function of each target.
+///
 /// @dev This contract provides an efficient and flexible solution for managing
 /// the permissions of a system.
 ///
 /// # Target Contracts
 ///
-/// A smart contract under the control of an `AuthManager` instance is known as a
-/// target. Target contracts will inherit from the `AuthManaged` contract and
+/// A smart contract under the control of an `AuthManager` instance is known as
+/// a target. Target contracts will inherit from the `AuthManaged` contract and
 /// implement the `auth` modifier on all functions that should be subject to
 /// access control. Any functions that do not implement this modifier will not
 /// be managed.
 ///
 /// # User Roles
 ///
-/// Roles are identified by `uint8` values ranging between 0 to 253, allowing
+/// Roles are identified by `uint8` values ranging from 0 to 253, allowing
 /// for 254 distinct roles.
 ///
 /// Each user's active roles are stored in a 256-bit bitmask, where each bit
@@ -33,40 +36,39 @@ import { IAuthority } from "./IAuthority.sol";
 /// # Access Control
 ///
 /// Access rules are scoped by target and function selector. These rules are
-/// stored in a 256-bitmask, where:
+/// stored in a 256-bit bitmask, where:
 /// - Bits 0-253: Represent the roles permitted to call the function.
-/// - Bit 254: Indicates whether the function is "public" and callable by anyone.
-/// - Bit 255: Indicates whether the function is "closed" and inaccessible to all.
+/// - Bit 254: Indicates whether the function is "public" and callable by
+///   anyone.
+/// - Bit 255: Indicates whether the function is "closed" and inaccessible to
+///   all.
 ///
 /// If a target function is neither public nor closed, access is restricted to
 /// users with at least one role matching the allowed roles (bits 0 to 253) in
-/// the function’s bitmask.
+/// the function's bitmask.
 ///
-/// # Owner
+/// Closed takes precedence over public: a function with both flags set is
+/// callable by nobody.
 ///
-/// All the permissions managed by this system can be modified by the owner of
-/// this instance. It is expected that this account will be highly secured.
+/// # Management
 ///
-/// To determine the owner, this contract performs a staticcall to its own
-/// `owner()` function. This allows compatibility with any contract that adheres
-/// to the ERC-173 ownership standard.
+/// Every setter is guarded by `_authorizeManager`, which the inheriting
+/// contract must implement with its own rule: a single owner, a multisig, a
+/// role, a timelock. Whoever passes it controls every permission in the
+/// system, so it should be highly secured. For example:
+///
+/// ```solidity
+/// function _authorizeManager() internal view override onlyOwner { }
+/// ```
 ///
 /// # Upgrade Compatible
 ///
-/// This contract utilizes ERC-7201 namespaced storage, making it compatible with
+/// This contract uses ERC-7201 namespaced storage, making it compatible with
 /// upgradeable contract architectures.
-///
-/// # Acknowledgements
-///
-/// Heavy inspiration is taken from:
-/// - OpenZeppelin;
-/// - Solmate; and
-/// - Solady.
-///
-/// Thank you.
 abstract contract AuthManager is IAuthManager, IAuthority {
-    // -------------------------------------------------------------------------
+    // =========================================================================
     // Type Declarations
+    // =========================================================================
 
     /// @custom:storage-location erc7201:libsol.storage.AuthManager
     struct AuthManagerStorage {
@@ -74,8 +76,9 @@ abstract contract AuthManager is IAuthManager, IAuthority {
         mapping(address => mapping(bytes4 => uint256)) access;
     }
 
-    // -------------------------------------------------------------------------
-    // State
+    // =========================================================================
+    // Constants
+    // =========================================================================
 
     /// @dev keccak256(abi.encode(uint256(keccak256("libsol.storage.AuthManager")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant AUTH_MANAGER_SLOT = 0x938700b07e50a0d76711cd0ee77205e6b6a2709fd62fa43819e05a1a4baac400;
@@ -107,48 +110,65 @@ abstract contract AuthManager is IAuthManager, IAuthority {
     /// @dev Maximum role index allowed.
     uint8 private constant MAX_ROLE = 253;
 
-    // -------------------------------------------------------------------------
+    // =========================================================================
     // Functions - Public
+    // =========================================================================
 
     /// @inheritdoc IAuthManager
     function setUserRole(address user, uint8 role, bool enabled) public virtual {
-        _assertAuthManagerOwner();
+        _authorizeManager();
         _assertValidRole(role);
         _setUserRole(user, role, enabled);
     }
 
     /// @inheritdoc IAuthManager
     function setFunctionClosed(address target, bytes4 selector, bool enabled) public virtual {
-        _assertAuthManagerOwner();
+        _authorizeManager();
         _setAccess(target, selector, CLOSED_SHIFT, enabled);
     }
 
     /// @inheritdoc IAuthManager
     function setFunctionPublic(address target, bytes4 selector, bool enabled) public virtual {
-        _assertAuthManagerOwner();
+        _authorizeManager();
         _setAccess(target, selector, PUBLIC_SHIFT, enabled);
     }
 
     /// @inheritdoc IAuthManager
     function setRoleAccess(address target, bytes4 selector, uint8 role, bool enabled) public virtual {
-        _assertAuthManagerOwner();
+        _authorizeManager();
         _assertValidRole(role);
         _setAccess(target, selector, role, enabled);
     }
 
     /// @inheritdoc IAuthority
     function setAuthority(address target, address newAuthority) public virtual {
-        _assertAuthManagerOwner();
+        _authorizeManager();
 
         assembly ("memory-safe") {
+            target := shr(96, shl(96, target))
+
+            if iszero(extcodesize(target)) {
+                mstore(0x00, 0x6db5489f) // `AuthManager__InvalidTarget()`
+                revert(0x1c, 0x04)
+            }
+
             newAuthority := shr(96, shl(96, newAuthority))
             mstore(0x00, shl(224, 0x7a9e5e4b)) // `setAuthority(address)`
             mstore(0x04, newAuthority)
 
             let success := call(gas(), target, 0x00, 0x00, 0x24, 0x00, 0x00)
 
-            if iszero(success) { revert(0x00, 0x00) }
-            if iszero(eq(returndatasize(), 0x00)) { revert(0x00, 0x00) }
+            // Bubble up the target's revert reason.
+            if iszero(success) {
+                let ptr := mload(0x40)
+                returndatacopy(ptr, 0x00, returndatasize())
+                revert(ptr, returndatasize())
+            }
+
+            if iszero(eq(returndatasize(), 0x00)) {
+                mstore(0x00, 0x6db5489f) // `AuthManager__InvalidTarget()`
+                revert(0x1c, 0x04)
+            }
 
             log3(0x00, 0x00, AUTHORITY_UPDATED, target, newAuthority)
         }
@@ -157,6 +177,10 @@ abstract contract AuthManager is IAuthManager, IAuthority {
     /// @inheritdoc IAuthority
     function canCall(address user, address target, bytes4 selector) public view virtual returns (bool result) {
         assembly ("memory-safe") {
+            user := shr(96, shl(96, user))
+            target := shr(96, shl(96, target))
+            selector := shl(224, shr(224, selector))
+
             // Retrieve the target function's access rules.
             mstore(0x00, target)
             mstore(0x20, add(AUTH_MANAGER_SLOT, 1))
@@ -168,36 +192,34 @@ abstract contract AuthManager is IAuthManager, IAuthority {
 
             let accessMask := sload(slot)
 
-            // Check whether the target function is closed.
-            if and(accessMask, CLOSED_MASK) {
-                mstore(0x00, 0x00)
-                return(0x00, 0x20)
+            // A closed function is callable by nobody: `result` stays false.
+            if iszero(and(accessMask, CLOSED_MASK)) {
+                switch and(accessMask, PUBLIC_MASK)
+                case 0 {
+                    // Not public: the user needs a role the function allows.
+                    let rolesMask := and(accessMask, ROLES_MASK)
+
+                    // Retrieve the user's active roles.
+                    mstore(0x00, user)
+                    mstore(0x20, AUTH_MANAGER_SLOT)
+                    let roles := sload(keccak256(0x00, 0x40))
+
+                    // Check whether the user is allowed to call.
+                    result := iszero(iszero(and(roles, rolesMask)))
+                }
+                default {
+                    // A public function is callable by anyone.
+                    result := 1
+                }
             }
-
-            // Check whether the target function is public.
-            if and(accessMask, PUBLIC_MASK) {
-                mstore(0x00, 0x01)
-                return(0x00, 0x20)
-            }
-
-            // Create the valid roles mask.
-            let rolesMask := and(accessMask, ROLES_MASK)
-
-            // Retrieve the user's active roles.
-            mstore(0x00, user)
-            mstore(0x20, AUTH_MANAGER_SLOT)
-            slot := keccak256(0x00, 0x40)
-
-            let roles := sload(slot)
-
-            // Check whether the user is allowed to call.
-            result := iszero(iszero(and(roles, rolesMask)))
         }
     }
 
     /// @inheritdoc IAuthManager
     function userRoles(address user) public view virtual returns (uint256 result) {
         assembly ("memory-safe") {
+            user := shr(96, shl(96, user))
+
             mstore(0x00, user)
             mstore(0x20, AUTH_MANAGER_SLOT)
             let slot := keccak256(0x00, 0x40)
@@ -209,17 +231,28 @@ abstract contract AuthManager is IAuthManager, IAuthority {
     /// @inheritdoc IAuthManager
     function hasRole(address user, uint8 role) public view virtual returns (bool result) {
         assembly ("memory-safe") {
+            user := shr(96, shl(96, user))
+            role := and(role, 0xff)
+
             mstore(0x00, user)
             mstore(0x20, AUTH_MANAGER_SLOT)
             let slot := keccak256(0x00, 0x40)
+            let roles := sload(slot)
 
-            result := iszero(iszero(and(sload(slot), shl(role, 1))))
+            // Only roles 0 to 253 map to a bit; 254 and 255 are flags, never
+            // roles.
+            let bit := and(shl(role, 1), ROLES_MASK)
+
+            result := iszero(iszero(and(roles, bit)))
         }
     }
 
     /// @inheritdoc IAuthManager
     function functionAccess(address target, bytes4 selector) public view virtual returns (uint256 result) {
         assembly ("memory-safe") {
+            target := shr(96, shl(96, target))
+            selector := shl(224, shr(224, selector))
+
             mstore(0x00, target)
             mstore(0x20, add(AUTH_MANAGER_SLOT, 1))
             let innerSlot := keccak256(0x00, 0x40)
@@ -233,6 +266,10 @@ abstract contract AuthManager is IAuthManager, IAuthority {
     /// @inheritdoc IAuthManager
     function roleHasAccess(address target, bytes4 selector, uint8 role) public view virtual returns (bool result) {
         assembly ("memory-safe") {
+            target := shr(96, shl(96, target))
+            selector := shl(224, shr(224, selector))
+            role := and(role, 0xff)
+
             mstore(0x00, target)
             mstore(0x20, add(AUTH_MANAGER_SLOT, 1))
             let innerSlot := keccak256(0x00, 0x40)
@@ -241,14 +278,23 @@ abstract contract AuthManager is IAuthManager, IAuthority {
             mstore(0x20, innerSlot)
             let slot := keccak256(0x00, 0x40)
 
-            let data := sload(slot)
-            result := iszero(iszero(and(data, shl(role, 1))))
+            let access := sload(slot)
+
+            // Only roles 0 to 253 map to a bit; bits 254 and 255 hold the
+            // public and closed flags, which `isFunctionPublic` and
+            // `isFunctionClosed` report.
+            let bit := and(shl(role, 1), ROLES_MASK)
+
+            result := iszero(iszero(and(access, bit)))
         }
     }
 
     /// @inheritdoc IAuthManager
     function isFunctionClosed(address target, bytes4 selector) public view virtual returns (bool result) {
         assembly ("memory-safe") {
+            target := shr(96, shl(96, target))
+            selector := shl(224, shr(224, selector))
+
             mstore(0x00, target)
             mstore(0x20, add(AUTH_MANAGER_SLOT, 1))
             let innerSlot := keccak256(0x00, 0x40)
@@ -265,6 +311,9 @@ abstract contract AuthManager is IAuthManager, IAuthority {
     /// @inheritdoc IAuthManager
     function isFunctionPublic(address target, bytes4 selector) public view virtual returns (bool result) {
         assembly ("memory-safe") {
+            target := shr(96, shl(96, target))
+            selector := shl(224, shr(224, selector))
+
             mstore(0x00, target)
             mstore(0x20, add(AUTH_MANAGER_SLOT, 1))
             let innerSlot := keccak256(0x00, 0x40)
@@ -278,10 +327,11 @@ abstract contract AuthManager is IAuthManager, IAuthority {
         }
     }
 
-    // -------------------------------------------------------------------------
+    // =========================================================================
     // Functions - Internal
+    // =========================================================================
 
-    /// @notice Sets or clears a specific bit in a user’s role bitmask.
+    /// @notice Sets or clears a specific bit in a user's role bitmask.
     ///
     /// @param user     The address of the user.
     /// @param role     The bit to set.
@@ -293,6 +343,9 @@ abstract contract AuthManager is IAuthManager, IAuthority {
     /// Emits a `UserRoleUpdated` event.
     function _setUserRole(address user, uint8 role, bool enabled) internal virtual {
         assembly ("memory-safe") {
+            role := and(role, 0xff)
+            enabled := iszero(iszero(enabled))
+
             user := shr(96, shl(96, user))
             mstore(0x00, user)
             mstore(0x20, AUTH_MANAGER_SLOT)
@@ -307,7 +360,7 @@ abstract contract AuthManager is IAuthManager, IAuthority {
         }
     }
 
-    /// @notice Sets or clears a specific bit in a function’s access bitmask.
+    /// @notice Sets or clears a specific bit in a function's access bitmask.
     ///
     /// @param target   The address of the target contract.
     /// @param selector The target function selector.
@@ -320,6 +373,10 @@ abstract contract AuthManager is IAuthManager, IAuthority {
     /// Emits an `AccessUpdated` event.
     function _setAccess(address target, bytes4 selector, uint8 shift, bool enabled) internal virtual {
         assembly ("memory-safe") {
+            selector := shl(224, shr(224, selector))
+            shift := and(shift, 0xff)
+            enabled := iszero(iszero(enabled))
+
             target := shr(96, shl(96, target))
             mstore(0x00, target)
             mstore(0x20, add(AUTH_MANAGER_SLOT, 1))
@@ -338,27 +395,17 @@ abstract contract AuthManager is IAuthManager, IAuthority {
         }
     }
 
-    /// @notice Asserts that the caller is the owner of the contract.
-    function _assertAuthManagerOwner() internal virtual {
-        assembly ("memory-safe") {
-            mstore(0x00, 0x8da5cb5b) // `owner()`
-            let success := staticcall(gas(), address(), 0x1c, 0x04, 0x00, 0x20)
-
-            if iszero(success) { revert(0x00, 0x00) }
-            if iszero(eq(returndatasize(), 0x20)) { revert(0x00, 0x00) }
-
-            if iszero(eq(caller(), mload(0x00))) {
-                mstore(0x0, 0x336eb95b) // `AuthManager__Unauthorized()`
-                revert(0x1c, 0x04)
-            }
-        }
-    }
+    /// @notice Reverts unless `msg.sender` may manage this authority. Called by
+    /// every setter; implement it with the access rule of your choice.
+    function _authorizeManager() internal view virtual;
 
     /// @notice Asserts that a role is valid and within bounds.
     ///
     /// @param role The role to validate.
-    function _assertValidRole(uint8 role) internal virtual {
+    function _assertValidRole(uint8 role) internal pure virtual {
         assembly ("memory-safe") {
+            role := and(role, 0xff)
+
             if gt(role, MAX_ROLE) {
                 mstore(0x00, 0x0d8b3f32) // `AuthManager__InvalidRole()`
                 revert(0x1c, 0x04)

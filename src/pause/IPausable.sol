@@ -1,15 +1,16 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.24;
 
 /// @title IPausable
 ///
 /// @author TSxo
 ///
-/// @notice Interface for the Pausable contract.
+/// @notice Interface for the `Pausable` contract.
 interface IPausable {
-    // -------------------------------------------------------------------------
+    // =========================================================================
     // Events
+    // =========================================================================
 
     /// @notice Emitted when the contract's pause status has been updated.
     ///
@@ -17,17 +18,19 @@ interface IPausable {
     /// @param enabled  Whether the contract was paused.
     event Paused(address indexed caller, bool enabled);
 
-    // -------------------------------------------------------------------------
+    // =========================================================================
     // Errors
+    // =========================================================================
 
-    /// @notice Raised when a function was called while the contract was paused.
+    /// @notice The contract is paused.
     error Pausable__PauseEnforced();
 
-    /// @notice Raised when a function was called while the contract was not paused.
+    /// @notice The contract is not paused.
     error Pausable__PauseExpected();
 
-    // -------------------------------------------------------------------------
+    // =========================================================================
     // Functions
+    // =========================================================================
 
     /// @notice Returns whether the contract is paused.
     ///

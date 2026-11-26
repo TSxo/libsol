@@ -1,0 +1,11 @@
+{
+  "beacon upgradeTo / OpenZeppelin": "32714",
+  "beacon upgradeTo / Solady": "32628",
+  "beacon upgradeTo / libsol": "32652",
+  "call through proxy / OpenZeppelin": "8092",
+  "call through proxy / Solady": "9831",
+  "call through proxy / libsol": "7867",
+  "deploy and initialize proxy / OpenZeppelin": "199942",
+  "deploy and initialize proxy / Solady": "158889",
+  "deploy and initialize proxy / libsol": "173021"
+}

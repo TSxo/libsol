@@ -1,15 +1,16 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.24;
 
-/// @title IPausedManaged
+/// @title IPauseManaged
 ///
 /// @author TSxo
 ///
-/// @notice Interface for the PausedManaged contract.
+/// @notice Interface for the `PauseManaged` contract.
 interface IPauseManaged {
-    // -------------------------------------------------------------------------
+    // =========================================================================
     // Events
+    // =========================================================================
 
     /// @notice Emitted when the contract's Pause Authority is updated.
     ///
@@ -17,17 +18,23 @@ interface IPauseManaged {
     /// @param newAuthority      The address of the new Pause Authority.
     event PauseAuthorityUpdated(address indexed previousAuthority, address indexed newAuthority);
 
-    // -------------------------------------------------------------------------
+    // =========================================================================
     // Errors
+    // =========================================================================
 
-    /// @notice Raised when the caller is not authorized to perform an operation.
+    /// @notice The caller is not the Pause Authority.
     error PauseManaged__Unauthorized();
 
-    /// @notice Raised when a call is made while the contract is paused.
+    /// @notice The Pause Authority reports this contract as paused.
     error PauseManaged__Paused();
 
-    // -------------------------------------------------------------------------
+    /// @notice The Pause Authority is not a contract, or returned malformed
+    /// data from `isPaused`.
+    error PauseManaged__InvalidAuthority();
+
+    // =========================================================================
     // Functions
+    // =========================================================================
 
     /// @notice Updates the contract's Pause Authority.
     ///
@@ -35,6 +42,7 @@ interface IPauseManaged {
     ///
     /// @dev Requirements:
     /// - Only callable by the current Pause Authority.
+    /// - `newAuthority` must be a contract.
     ///
     /// Emits a `PauseAuthorityUpdated` event.
     function setPauseAuthority(address newAuthority) external;

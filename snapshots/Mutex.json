@@ -1,0 +1,8 @@
+{
+  "guarded call, storage / OpenZeppelin": "23580",
+  "guarded call, storage / Solady": "43312",
+  "guarded call, storage / libsol": "23580",
+  "guarded call, transient / OpenZeppelin": "21675",
+  "guarded call, transient / Solady": "21515",
+  "guarded call, transient / libsol": "21564"
+}

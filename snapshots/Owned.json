@@ -1,0 +1,8 @@
+{
+  "onlyOwner call / OpenZeppelin": "23370",
+  "onlyOwner call / Solady": "23423",
+  "onlyOwner call / libsol": "23360",
+  "transferOwnership / OpenZeppelin": "28570",
+  "transferOwnership / Solady": "28468",
+  "transferOwnership / libsol": "28528"
+}

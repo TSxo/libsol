@@ -1,15 +1,16 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.24;
 
 /// @title IAuthManager
 ///
 /// @author TSxo
 ///
-/// @notice The interface for the AuthManager contract.
+/// @notice Interface for the `AuthManager` contract.
 interface IAuthManager {
-    // -------------------------------------------------------------------------
+    // =========================================================================
     // Events
+    // =========================================================================
 
     /// @notice Emitted when a user's role has been updated.
     ///
@@ -22,22 +23,27 @@ interface IAuthManager {
     ///
     /// @param target   The target contract.
     /// @param selector The function selector that was updated.
-    /// @param role     The role that was updated.
-    /// @param enabled  Whether the role was enabled.
+    /// @param role     The role, or flag bit, that was updated.
+    /// @param enabled  Whether the bit was set.
+    ///
+    /// @dev `role` is 0 to 253 for a role, 254 for the public flag, and 255 for
+    /// the closed flag.
     event AccessUpdated(address indexed target, bytes4 indexed selector, uint8 indexed role, bool enabled);
 
-    // -------------------------------------------------------------------------
+    // =========================================================================
     // Errors
+    // =========================================================================
 
-    /// @notice Raised when a caller does not have permission to invoke a target
-    /// function.
-    error AuthManager__Unauthorized();
-
-    /// @notice Raised when attempting to set an invalid role.
+    /// @notice The role is above 253.
     error AuthManager__InvalidRole();
 
-    // -------------------------------------------------------------------------
+    /// @notice The target is not a contract, or returned data from
+    /// `setAuthority`.
+    error AuthManager__InvalidTarget();
+
+    // =========================================================================
     // Functions
+    // =========================================================================
 
     /// @notice Assigns or removes a role for a user.
     ///
@@ -46,7 +52,7 @@ interface IAuthManager {
     /// @param enabled  True to assign the role, false to remove it.
     ///
     /// @dev Requirements:
-    /// - Only callable by the owner.
+    /// - Only callable by an account `_authorizeManager` accepts.
     /// - The role must be between 0 and 253, inclusive.
     ///
     /// Emits a `UserRoleUpdated` event.
@@ -59,7 +65,7 @@ interface IAuthManager {
     /// @param enabled  True to close the function, false to open it.
     ///
     /// @dev Requirements:
-    /// - Only callable by the owner.
+    /// - Only callable by an account `_authorizeManager` accepts.
     ///
     /// Emits an `AccessUpdated` event.
     function setFunctionClosed(address target, bytes4 selector, bool enabled) external;
@@ -68,15 +74,16 @@ interface IAuthManager {
     ///
     /// @param target   The address of the target contract.
     /// @param selector The target function selector.
-    /// @param enabled  True to make the function public, false to place it under access control.
+    /// @param enabled  True to make it public, false to restore role checks.
     ///
     /// @dev Requirements:
-    /// - Only callable by the owner.
+    /// - Only callable by an account `_authorizeManager` accepts.
     ///
     /// Emits an `AccessUpdated` event.
     function setFunctionPublic(address target, bytes4 selector, bool enabled) external;
 
-    /// @notice Sets whether a specific role can access a function on a target contract.
+    /// @notice Sets whether a specific role can access a function on a target
+    /// contract.
     ///
     /// @param target   The address of the target contract.
     /// @param selector The target function selector.
@@ -84,18 +91,18 @@ interface IAuthManager {
     /// @param enabled  True to grant access to the role, false to revoke it.
     ///
     /// @dev Requirements:
-    /// - Only callable by the owner.
+    /// - Only callable by an account `_authorizeManager` accepts.
     /// - The role must be between 0 and 253, inclusive.
     ///
     /// Emits an `AccessUpdated` event.
     function setRoleAccess(address target, bytes4 selector, uint8 role, bool enabled) external;
 
-    /// @notice Retrieves the role bitmask for a user.
+    /// @notice Retrieves the role bitmask for a user. Bit r is set when the
+    /// user holds role r; bits 254 and 255 are always zero.
     ///
     /// @param user The address of the user.
     ///
-    /// @return result The 256-bit role bitmask. Bits 0-253 indicate assigned
-    /// roles. Bits 254 and 255 are unused.
+    /// @return result The user's role bitmask.
     function userRoles(address user) external view returns (uint256 result);
 
     /// @notice Checks whether a user has a specific role assigned.
@@ -103,28 +110,28 @@ interface IAuthManager {
     /// @param user The address of the user to check.
     /// @param role The role to check (0 <= role <= 253).
     ///
-    /// @return result True if the user has the specified role, false otherwise.
+    /// @return result True if the user has the role; always false above 253.
     function hasRole(address user, uint8 role) external view returns (bool result);
 
-    /// @notice Retrieves the access bitmask for a function on a target contract.
+    /// @notice Retrieves the access bitmask for a function on a target
+    /// contract: bits 0-253 are the allowed roles, bit 254 is the public flag,
+    /// and bit 255 is the closed flag.
     ///
     /// @param target   The address of the target contract.
     /// @param selector The target function selector.
     ///
-    /// @return result The 256-bit access bitmask, where:
-    /// - Bits 0-253 indicate allowed roles.
-    /// - Bit 254 indicates if the function is public.
-    /// - Bit 255 indicates if the function is closed.
+    /// @return result The function's access bitmask.
     function functionAccess(address target, bytes4 selector) external view returns (uint256 result);
 
     /// @notice Checks whether a specific role has access to a function on a
-    /// target contract.
+    /// target contract. Bits 254 and 255 are flags, not roles: see
+    /// `isFunctionPublic` and `isFunctionClosed`.
     ///
     /// @param target   The address of the target contract.
     /// @param selector The target function selector.
     /// @param role     The role to check (0 <= role <= 253).
     ///
-    /// @return result True if the role is allowed to call the function, false otherwise.
+    /// @return result True if the role is allowed; always false above 253.
     function roleHasAccess(address target, bytes4 selector, uint8 role) external view returns (bool result);
 
     /// @notice Checks whether a function on a target contract is closed.

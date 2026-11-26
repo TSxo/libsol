@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.24;
 
 import { IPauseManaged } from "./IPauseManaged.sol";
 import { IPauseManager } from "./IPauseManager.sol";
@@ -10,7 +10,10 @@ import { IPauseAuthority } from "./IPauseAuthority.sol";
 ///
 /// @author TSxo
 ///
-/// @dev This contract provides an effecient and flexible solution for managing
+/// @notice A central Pause Authority that pauses targets individually or all at
+/// once.
+///
+/// @dev This contract provides an efficient and flexible solution for managing
 /// the paused status of a system.
 ///
 /// It allows for both global pausing of all managed contracts and individual
@@ -19,7 +22,7 @@ import { IPauseAuthority } from "./IPauseAuthority.sol";
 /// # Target Contracts
 ///
 /// A smart contract under the control of a `PauseManager` instance is known as
-/// target. Target contracts will inherit from the `PauseManaged` contract and
+/// a target. Target contracts will inherit from the `PauseManaged` contract and
 /// implement the `notPaused` modifier on all functions that should be subject
 /// to management.
 ///
@@ -28,38 +31,35 @@ import { IPauseAuthority } from "./IPauseAuthority.sol";
 /// The system supports two levels of pausing:
 /// - Global Pause: A single boolean state that, when true, indicates all target
 ///   contracts managed by this instance should be considered paused.
-/// - Target-Specific Pause: Each target contract can have its own boolean
-///   pause state. This allows for granular control, pausing individual contracts
+/// - Target-Specific Pause: Each target contract can have its own boolean pause
+///   state. This allows for granular control, pausing individual contracts
 ///   without affecting others.
 ///
-/// Important: A target is considered paused if either the global pause is active
-/// or its specific pause state is true.
+/// A target is paused if either the global pause is active or its own pause
+/// state is true.
 ///
-/// # Owner
+/// # Management
 ///
-/// All the state managed by this system can be modified by the owner of this
-/// instance. It is expected that this account will be highly secured.
+/// Every setter is guarded by `_authorizeManager`, which the inheriting
+/// contract must implement with its own rule: a single owner, a multisig, a
+/// role, a timelock. Whoever passes it can pause every target, so it should be
+/// highly secured. For example:
 ///
-/// To determine the owner, this contract performs a staticcall to its own
-/// `owner()` function. This allows compatibility with any contract that adheres
-/// to the ERC-173 ownership standard.
+/// ```solidity
+/// function _authorizeManager() internal view override onlyOwner { }
+/// ```
+///
+/// The hook shares its name with `AuthManager`'s, so a contract that inherits
+/// both implements it once, with `override(AuthManager, PauseManager)`.
 ///
 /// # Upgrade Compatible
 ///
-/// This contract utilizes ERC-7201 namespaced storage, making it compatible with
+/// This contract uses ERC-7201 namespaced storage, making it compatible with
 /// upgradeable contract architectures.
-///
-/// # Acknowledgements
-///
-/// Heavy inspiration is taken from:
-/// - OpenZeppelin;
-/// - Solmate; and
-/// - Solady.
-///
-/// Thank you.
 abstract contract PauseManager is IPauseManager, IPauseAuthority {
-    // -------------------------------------------------------------------------
+    // =========================================================================
     // Type Declarations
+    // =========================================================================
 
     /// @custom:storage-location erc7201:libsol.storage.PauseManager
     struct PauseManagerStorage {
@@ -67,8 +67,9 @@ abstract contract PauseManager is IPauseManager, IPauseAuthority {
         mapping(address => bool) paused;
     }
 
-    // -------------------------------------------------------------------------
-    // State
+    // =========================================================================
+    // Constants
+    // =========================================================================
 
     /// @dev keccak256(abi.encode(uint256(keccak256("libsol.storage.PauseManager")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant PAUSE_MANAGER_SLOT = 0x03dc5d0b43282563b8a1e9222195b8d69795a494aec70f1259eac0c5aa6af700;
@@ -82,34 +83,51 @@ abstract contract PauseManager is IPauseManager, IPauseAuthority {
     /// @dev keccak256(bytes("PauseAuthorityUpdated(address,address)"))
     bytes32 private constant PAUSE_AUTH_UPDATED = 0x10c33fee6662fbe5d47879269625f98f56358218ae1332e9ce326a30c16b3414;
 
-    // -------------------------------------------------------------------------
+    // =========================================================================
     // Functions - Public
+    // =========================================================================
 
     /// @inheritdoc IPauseManager
     function setTargetPaused(address target, bool enabled) public virtual {
-        _assertPauseManagerOwner();
+        _authorizeManager();
         _setTargetPaused(target, enabled);
     }
 
     /// @inheritdoc IPauseManager
     function setGloballyPaused(bool enabled) public virtual {
-        _assertPauseManagerOwner();
+        _authorizeManager();
         _setGloballyPaused(enabled);
     }
 
     /// @inheritdoc IPauseAuthority
     function setPauseAuthority(address target, address newAuthority) public virtual {
-        _assertPauseManagerOwner();
+        _authorizeManager();
 
         assembly ("memory-safe") {
+            target := shr(96, shl(96, target))
+
+            if iszero(extcodesize(target)) {
+                mstore(0x00, 0x27c9d722) // `PauseManager__InvalidTarget()`
+                revert(0x1c, 0x04)
+            }
+
             newAuthority := shr(96, shl(96, newAuthority))
             mstore(0x00, shl(224, 0x4b90364f)) // `setPauseAuthority(address)`
             mstore(0x04, newAuthority)
 
             let success := call(gas(), target, 0x00, 0x00, 0x24, 0x00, 0x00)
 
-            if iszero(success) { revert(0x00, 0x00) }
-            if iszero(eq(returndatasize(), 0x00)) { revert(0x00, 0x00) }
+            // Bubble up the target's revert reason.
+            if iszero(success) {
+                let ptr := mload(0x40)
+                returndatacopy(ptr, 0x00, returndatasize())
+                revert(ptr, returndatasize())
+            }
+
+            if iszero(eq(returndatasize(), 0x00)) {
+                mstore(0x00, 0x27c9d722) // `PauseManager__InvalidTarget()`
+                revert(0x1c, 0x04)
+            }
 
             log3(0x00, 0x00, PAUSE_AUTH_UPDATED, target, newAuthority)
         }
@@ -123,6 +141,8 @@ abstract contract PauseManager is IPauseManager, IPauseAuthority {
     /// @inheritdoc IPauseManager
     function isTargetPaused(address target) public view virtual returns (bool result) {
         assembly ("memory-safe") {
+            target := shr(96, shl(96, target))
+
             mstore(0x00, target)
             mstore(0x20, add(PAUSE_MANAGER_SLOT, 1))
             result := sload(keccak256(0x00, 0x40))
@@ -136,8 +156,9 @@ abstract contract PauseManager is IPauseManager, IPauseAuthority {
         }
     }
 
-    // -------------------------------------------------------------------------
+    // =========================================================================
     // Functions - Internal
+    // =========================================================================
 
     /// @notice Sets the paused status of a target contract.
     ///
@@ -149,6 +170,8 @@ abstract contract PauseManager is IPauseManager, IPauseAuthority {
     /// Emits a `TargetStatusUpdated` event.
     function _setTargetPaused(address target, bool enabled) internal virtual {
         assembly ("memory-safe") {
+            enabled := iszero(iszero(enabled))
+
             target := shr(96, shl(96, target))
             mstore(0x00, target)
             mstore(0x20, add(PAUSE_MANAGER_SLOT, 1))
@@ -170,6 +193,8 @@ abstract contract PauseManager is IPauseManager, IPauseAuthority {
     /// Emits a `GlobalStatusUpdated` event.
     function _setGloballyPaused(bool enabled) internal virtual {
         assembly ("memory-safe") {
+            enabled := iszero(iszero(enabled))
+
             sstore(PAUSE_MANAGER_SLOT, enabled)
 
             mstore(0x00, enabled)
@@ -177,19 +202,7 @@ abstract contract PauseManager is IPauseManager, IPauseAuthority {
         }
     }
 
-    /// @notice Asserts that the caller is the owner of the contract.
-    function _assertPauseManagerOwner() internal virtual {
-        assembly ("memory-safe") {
-            mstore(0x00, 0x8da5cb5b) // `owner()`
-            let success := staticcall(gas(), address(), 0x1c, 0x04, 0x00, 0x20)
-
-            if iszero(success) { revert(0x00, 0x00) }
-            if iszero(eq(returndatasize(), 0x20)) { revert(0x00, 0x00) }
-
-            if iszero(eq(caller(), mload(0x00))) {
-                mstore(0x0, 0xe2813822) // `PauseManager__Unauthorized()`
-                revert(0x1c, 0x04)
-            }
-        }
-    }
+    /// @notice Reverts unless `msg.sender` may manage pausing. Called by every
+    /// setter; implement it with the access rule of your choice.
+    function _authorizeManager() internal view virtual;
 }
